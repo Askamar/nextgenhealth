@@ -6,10 +6,10 @@ import { Role } from '../types';
 import { getDoctorsAPI, requestOtpAPI, verifyOtpAPI } from '../services/api';
 import { User } from '../types';
 import { Card, Button } from '../components/Components';
-import { 
-    Stethoscope, Activity, FlaskConical, Ambulance, 
-    ArrowRight, Phone, MessageSquare, ShieldCheck, 
-    Smartphone, Loader2 
+import {
+    Stethoscope, Activity, FlaskConical,
+    ArrowRight, Phone, ShieldCheck,
+    Smartphone, Loader2, Users
 } from 'lucide-react';
 
 const AuthCardHeader = ({ title, subtitle }: { title: string; subtitle: string }) => (
@@ -95,7 +95,7 @@ export const Login = () => {
         try {
             const user = await verifyOtpAPI(phone, otp);
             // In real app, we use AuthContext login to handle session
-            await login(user.email || '', user.role); 
+            await login(user.email || '', user.role);
             navigate('/patient');
         } catch (err: any) {
             setError(err.message);
@@ -107,9 +107,9 @@ export const Login = () => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 py-12 px-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col transition-all duration-500">
-                <AuthCardHeader 
-                    title={step === 'phone' ? "Patient Login" : "Verify OTP"} 
-                    subtitle={step === 'phone' ? "Enter your phone number to receive an access code" : `We sent a 6-digit code to ${phone}`} 
+                <AuthCardHeader
+                    title={step === 'phone' ? "Patient Login" : "Verify OTP"}
+                    subtitle={step === 'phone' ? "Enter your phone number to receive an access code" : `We sent a 6-digit code to ${phone}`}
                 />
 
                 <div className="p-8">
@@ -127,8 +127,8 @@ export const Login = () => {
                                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                                         <Phone size={18} />
                                     </div>
-                                    <input 
-                                        type="tel" 
+                                    <input
+                                        type="tel"
                                         className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-100 focus:border-secondary-500 focus:ring-4 focus:ring-secondary-500/10 outline-none transition-all bg-slate-50 font-medium"
                                         placeholder="+1 (555) 000-0000"
                                         value={phone}
@@ -151,8 +151,8 @@ export const Login = () => {
                                 <Button type="submit" disabled={loading || otp.length < 6} className="w-full py-4 text-lg bg-secondary-500 hover:bg-secondary-600">
                                     {loading ? <Loader2 className="animate-spin" /> : "Verify & Login"}
                                 </Button>
-                                <button 
-                                    type="button" 
+                                <button
+                                    type="button"
                                     onClick={() => setStep('phone')}
                                     className="w-full text-slate-400 text-sm hover:text-slate-600 transition-colors"
                                 >
@@ -219,9 +219,9 @@ export const Register = () => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 py-12 px-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col">
-                <AuthCardHeader 
-                    title={step === 'details' ? "New Patient Registration" : "Verify Your Phone"} 
-                    subtitle={step === 'details' ? "Provide your basic details to get started" : `We sent a code to ${phone}`} 
+                <AuthCardHeader
+                    title={step === 'details' ? "New Patient Registration" : "Verify Your Phone"}
+                    subtitle={step === 'details' ? "Provide your basic details to get started" : `We sent a code to ${phone}`}
                 />
 
                 <div className="p-8">
@@ -236,8 +236,8 @@ export const Register = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
-                                    <input 
-                                        type="text" 
+                                    <input
+                                        type="text"
                                         className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
                                         placeholder="John Doe"
                                         value={name}
@@ -247,8 +247,8 @@ export const Register = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
-                                    <input 
-                                        type="tel" 
+                                    <input
+                                        type="tel"
                                         className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
                                         placeholder="+1 (555) 000-0000"
                                         value={phone}
@@ -258,8 +258,8 @@ export const Register = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-2">Date of Birth</label>
-                                    <input 
-                                        type="date" 
+                                    <input
+                                        type="date"
                                         className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
                                         value={dob}
                                         onChange={e => setDob(e.target.value)}
@@ -296,8 +296,8 @@ export const Register = () => {
                                 <Button type="submit" disabled={loading || otp.length < 6} className="w-full py-4 text-lg bg-secondary-500 hover:bg-secondary-600">
                                     {loading ? <Loader2 className="animate-spin" /> : "Complete Registration"}
                                 </Button>
-                                <button 
-                                    type="button" 
+                                <button
+                                    type="button"
                                     onClick={() => setStep('details')}
                                     className="w-full text-slate-400 text-sm hover:text-slate-600 transition-colors"
                                 >
@@ -306,7 +306,7 @@ export const Register = () => {
                             </div>
                         </form>
                     )}
-                    
+
                     <p className="text-center mt-10 text-slate-500 text-sm">
                         Already have an account? <Link to="/login" className="text-secondary-600 font-bold hover:underline">Login here</Link>
                     </p>
@@ -316,6 +316,171 @@ export const Register = () => {
     );
 };
 
-export const Home = () => { /* No changes to Home component */ return null; };
+export const Home = () => {
+    return (
+        <div className="flex flex-col w-full">
+            {/* Hero Section */}
+            <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white pt-16 pb-32">
+                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-3xl opacity-50 animate-blob"></div>
+                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-[600px] h-[600px] bg-secondary-500/10 rounded-full blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
+
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                    <div className="flex flex-col lg:flex-row items-center gap-12">
+                        <div className="lg:w-1/2 text-center lg:text-left">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-50 text-primary-600 font-semibold text-sm mb-6 border border-primary-100">
+                                <Activity size={16} />
+                                <span>#1 Hospital Management System</span>
+                            </div>
+                            <h1 className="text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
+                                Smart Healthcare for a <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-secondary-500">Better Tomorrow</span>
+                            </h1>
+                            <p className="text-xl text-slate-600 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0">
+                                Experience the future of medical care with MediCore. Streamlined appointments, expert doctors, and world-class facilities at your fingertips.
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                                <Link to="/register" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary-600 text-white rounded-xl font-bold text-lg hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/30">
+                                    Book Appointment <ArrowRight size={20} />
+                                </Link>
+                                <Link to="/doctors" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-slate-700 border-2 border-slate-100 rounded-xl font-bold text-lg hover:border-primary-500 hover:text-primary-600 transition-all">
+                                    Find a Doctor
+                                </Link>
+                            </div>
+
+                            <div className="mt-12 flex items-center justify-center lg:justify-start gap-8 opacity-80">
+                                <div className="flex -space-x-4">
+                                    {[1, 2, 3, 4].map(i => (
+                                        <div key={i} className="w-10 h-10 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-xs font-bold text-slate-500">
+                                            {i === 4 ? '2k+' : ''}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="text-sm font-medium text-slate-500">
+                                    Trusted by <span className="text-slate-900 font-bold">2,000+</span> patients
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="lg:w-1/2 relative">
+                            <div className="relative z-10 grid grid-cols-2 gap-4">
+                                <div className="space-y-4 mt-8">
+                                    <div className="p-6 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 hover:-translate-y-1 transition-transform duration-300">
+                                        <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mb-4">
+                                            <Phone size={24} />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-900">Emergency</h3>
+                                        <p className="text-slate-500 text-sm mt-1">24/7 Rapid Response</p>
+                                    </div>
+                                    <div className="p-6 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 hover:-translate-y-1 transition-transform duration-300">
+                                        <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4">
+                                            <Stethoscope size={24} />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-900">Expert Doctors</h3>
+                                        <p className="text-slate-500 text-sm mt-1">Top Specialists</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="p-6 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 hover:-translate-y-1 transition-transform duration-300">
+                                        <div className="w-12 h-12 bg-teal-100 text-teal-600 rounded-xl flex items-center justify-center mb-4">
+                                            <ShieldCheck size={24} />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-900">Secure Records</h3>
+                                        <p className="text-slate-500 text-sm mt-1">100% Data Privacy</p>
+                                    </div>
+                                    <div className="p-6 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 hover:-translate-y-1 transition-transform duration-300">
+                                        <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-4">
+                                            <FlaskConical size={24} />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-900">Lab Services</h3>
+                                        <p className="text-slate-500 text-sm mt-1">Advanced Testing</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Decorative background circle */}
+                            <div className="absolute inset-0 bg-gradient-to-tr from-primary-100 to-secondary-100 rounded-full blur-3xl -z-10 transform scale-110"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Stats Section */}
+            <section className="py-20 bg-white">
+                <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8">
+                    {[
+                        { label: 'Happy Patients', value: '15,000+', icon: Users, color: 'text-primary-600', bg: 'bg-primary-50' },
+                        { label: 'Expert Doctors', value: '150+', icon: Stethoscope, color: 'text-secondary-600', bg: 'bg-secondary-50' },
+                        { label: 'Hospital Rooms', value: '500+', icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
+                        { label: 'Awards Won', value: '25+', icon: ShieldCheck, color: 'text-amber-600', bg: 'bg-amber-50' },
+                    ].map((stat, idx) => (
+                        <div key={idx} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors cursor-default">
+                            <div className={`w-14 h-14 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center`}>
+                                <stat.icon size={28} />
+                            </div>
+                            <div>
+                                <div className="text-3xl font-bold text-slate-900">{stat.value}</div>
+                                <div className="text-sm font-medium text-slate-500">{stat.label}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            {/* Services / Features */}
+            <section className="py-24 bg-slate-50 relative">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center max-w-3xl mx-auto mb-16">
+                        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Comprehensive Care for You</h2>
+                        <p className="text-lg text-slate-600">We provide a wide range of medical services to ensure your health and well-being are always prioritized.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {[
+                            { title: 'General Medicine', desc: 'Comprehensive healthcare for adults, covering diagnosis, treatment, and prevention.', icon: Activity, color: 'blue' },
+                            { title: 'Pediatrics', desc: 'Specialized medical care for infants, children, and adolescents.', icon: Users, color: 'green' },
+                            { title: 'Cardiology', desc: 'Advanced cardiac care with state-of-the-art diagnostic and treatment facilities.', icon: Activity, color: 'red' },
+                            { title: 'Neurology', desc: 'Expert care for disorders of the nervous system, including brain and spinal cord.', icon: Activity, color: 'purple' },
+                            { title: 'Orthopedics', desc: 'Treatment for conditions involving the musculoskeletal system.', icon: Activity, color: 'amber' },
+                            { title: 'Dental Care', desc: 'Complete dental solution for you and your family.', icon: Activity, color: 'teal' },
+                        ].map((service, idx) => (
+                            <div key={idx} className="group bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100">
+                                <div className={`w-14 h-14 bg-${service.color}-50 text-${service.color}-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                                    <service.icon size={28} />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-primary-600 transition-colors">{service.title}</h3>
+                                <p className="text-slate-500 leading-relaxed">{service.desc}</p>
+                                <Link to="/facilities" className="inline-flex items-center gap-2 text-primary-600 font-bold mt-6 hover:gap-3 transition-all">
+                                    Learn more <ArrowRight size={16} />
+                                </Link>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* Call to Action */}
+            <section className="py-20">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="bg-gradient-to-r from-primary-600 to-secondary-600 rounded-3xl p-12 md:p-16 text-center text-white relative overflow-hidden shadow-2xl shadow-primary-500/25">
+                        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
+                        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 bg-black/10 rounded-full blur-3xl"></div>
+
+                        <div className="relative z-10 max-w-3xl mx-auto">
+                            <h2 className="text-3xl md:text-5xl font-bold mb-6">Ready to prioritize your health?</h2>
+                            <p className="text-xl text-primary-50 mb-10">Book an appointment today with our expert doctors and take the first step towards a healthier life.</p>
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                <Link to="/register" className="inline-block px-10 py-4 bg-white text-primary-600 rounded-xl font-bold text-lg hover:bg-slate-50 transition-colors shadow-lg">
+                                    Book Now
+                                </Link>
+                                {/* Optional Contact Link */}
+                                <button className="inline-block px-10 py-4 bg-primary-700 text-white border border-primary-500 rounded-xl font-bold text-lg hover:bg-primary-800 transition-colors">
+                                    Contact Us
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    );
+};
 export const Doctors = () => { /* No changes to Doctors component */ return null; };
 export const Facilities = () => { /* No changes to Facilities component */ return null; };
