@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -9,8 +8,9 @@ import { Card, Button } from '../components/Components';
 import {
     Stethoscope, Activity, FlaskConical,
     ArrowRight, Phone, ShieldCheck,
-    Smartphone, Loader2, Users
+    Smartphone, Loader2, Users, Calendar, Clock
 } from 'lucide-react';
+import heroBg from '../assets/hero_bg.png';
 
 const AuthCardHeader = ({ title, subtitle }: { title: string; subtitle: string }) => (
     <div className="p-8 text-center bg-white border-b border-slate-50">
@@ -50,7 +50,6 @@ const OtpInputGroup = ({ value, onChange }: { value: string; onChange: (val: str
             {[0, 1, 2, 3, 4, 5].map((idx) => (
                 <input
                     key={idx}
-                    // FIX: Wrap assignment in curly braces to return void
                     ref={(el) => { inputs.current[idx] = el; }}
                     type="text"
                     maxLength={1}
@@ -320,83 +319,91 @@ export const Home = () => {
     return (
         <div className="flex flex-col w-full">
             {/* Hero Section */}
-            <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white pt-16 pb-32">
-                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-[600px] h-[600px] bg-primary-500/10 rounded-full blur-3xl opacity-50 animate-blob"></div>
-                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-[600px] h-[600px] bg-secondary-500/10 rounded-full blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
+            <section className="relative min-h-[95vh] flex items-center relative overflow-hidden">
+                {/* Background Image & Overlays */}
+                <div className="absolute inset-0 z-0">
+                    <img src={heroBg} className="w-full h-full object-cover" alt="Hospital Background" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/95 via-slate-900/80 to-transparent"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent"></div>
+                </div>
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                    <div className="flex flex-col lg:flex-row items-center gap-12">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full pt-20">
+                    <div className="flex flex-col lg:flex-row items-center gap-16">
                         <div className="lg:w-1/2 text-center lg:text-left">
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-50 text-primary-600 font-semibold text-sm mb-6 border border-primary-100">
-                                <Activity size={16} />
-                                <span>#1 Hospital Management System</span>
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md text-primary-300 font-semibold text-sm mb-8 border border-white/20 shadow-lg">
+                                <Activity size={16} className="text-primary-400" />
+                                <span>#1 Modern Hospital Management System</span>
                             </div>
-                            <h1 className="text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
-                                Smart Healthcare for a <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-secondary-500">Better Tomorrow</span>
+
+                            <h1 className="text-5xl lg:text-7xl font-bold text-white leading-tight mb-8 drop-shadow-lg tracking-tight">
+                                Smart Healthcare for a <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-teal-400">Better Tomorrow</span>
                             </h1>
-                            <p className="text-xl text-slate-600 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0">
+
+                            <p className="text-xl text-slate-300 mb-10 leading-relaxed max-w-2xl mx-auto lg:mx-0 font-light">
                                 Experience the future of medical care with MediCore. Streamlined appointments, expert doctors, and world-class facilities at your fingertips.
                             </p>
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                                <Link to="/register" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary-600 text-white rounded-xl font-bold text-lg hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/30">
+
+                            <div className="flex flex-col sm:flex-row gap-5 justify-center lg:justify-start">
+                                <Link to="/register" className="inline-flex items-center justify-center gap-2 px-8 py-5 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-2xl font-bold text-lg hover:shadow-lg hover:shadow-primary-500/25 hover:scale-105 transition-all duration-300">
                                     Book Appointment <ArrowRight size={20} />
                                 </Link>
-                                <Link to="/doctors" className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-slate-700 border-2 border-slate-100 rounded-xl font-bold text-lg hover:border-primary-500 hover:text-primary-600 transition-all">
+                                <Link to="/doctors" className="inline-flex items-center justify-center gap-2 px-8 py-5 bg-white/5 backdrop-blur-md text-white border border-white/20 rounded-2xl font-bold text-lg hover:bg-white/10 transition-all hover:scale-105">
                                     Find a Doctor
                                 </Link>
                             </div>
 
-                            <div className="mt-12 flex items-center justify-center lg:justify-start gap-8 opacity-80">
+                            <div className="mt-16 flex items-center justify-center lg:justify-start gap-8 opacity-90">
                                 <div className="flex -space-x-4">
                                     {[1, 2, 3, 4].map(i => (
-                                        <div key={i} className="w-10 h-10 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-xs font-bold text-slate-500">
+                                        <div key={i} className="w-12 h-12 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 shadow-lg">
                                             {i === 4 ? '2k+' : ''}
                                         </div>
                                     ))}
                                 </div>
-                                <div className="text-sm font-medium text-slate-500">
-                                    Trusted by <span className="text-slate-900 font-bold">2,000+</span> patients
+                                <div className="text-sm font-medium text-slate-300">
+                                    Trusted by <span className="text-white font-bold text-lg">2,000+</span> patients
+                                    <div className="flex text-amber-400 gap-0.5 mt-1">
+                                        {[1, 2, 3, 4, 5].map(s => <span key={s}>★</span>)}
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="lg:w-1/2 relative">
-                            <div className="relative z-10 grid grid-cols-2 gap-4">
-                                <div className="space-y-4 mt-8">
-                                    <div className="p-6 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 hover:-translate-y-1 transition-transform duration-300">
-                                        <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mb-4">
-                                            <Phone size={24} />
+                        <div className="lg:w-1/2 relative hidden lg:block">
+                            <div className="relative z-10 grid grid-cols-2 gap-6 perspective-1000">
+                                <div className="space-y-6 mt-12">
+                                    <div className="p-6 bg-white/10 backdrop-blur-xl rounded-3xl border border-white/10 hover:bg-white/20 transition-all duration-300 shadow-2xl hover:-translate-y-2 group">
+                                        <div className="w-14 h-14 bg-gradient-to-br from-red-500/20 to-red-500/5 text-red-400 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                                            <Phone size={28} />
                                         </div>
-                                        <h3 className="text-lg font-bold text-slate-900">Emergency</h3>
-                                        <p className="text-slate-500 text-sm mt-1">24/7 Rapid Response</p>
+                                        <h3 className="text-xl font-bold text-white mb-2">Emergency</h3>
+                                        <p className="text-slate-400 text-sm">24/7 Rapid Response Team ready to help.</p>
                                     </div>
-                                    <div className="p-6 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 hover:-translate-y-1 transition-transform duration-300">
-                                        <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4">
-                                            <Stethoscope size={24} />
+                                    <div className="p-6 bg-white/10 backdrop-blur-xl rounded-3xl border border-white/10 hover:bg-white/20 transition-all duration-300 shadow-2xl hover:-translate-y-2 group">
+                                        <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-blue-500/5 text-blue-400 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                                            <Stethoscope size={28} />
                                         </div>
-                                        <h3 className="text-lg font-bold text-slate-900">Expert Doctors</h3>
-                                        <p className="text-slate-500 text-sm mt-1">Top Specialists</p>
+                                        <h3 className="text-xl font-bold text-white mb-2">Best Doctors</h3>
+                                        <p className="text-slate-400 text-sm">Certified specialists from round the globe.</p>
                                     </div>
                                 </div>
-                                <div className="space-y-4">
-                                    <div className="p-6 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 hover:-translate-y-1 transition-transform duration-300">
-                                        <div className="w-12 h-12 bg-teal-100 text-teal-600 rounded-xl flex items-center justify-center mb-4">
-                                            <ShieldCheck size={24} />
+                                <div className="space-y-6">
+                                    <div className="p-6 bg-white/10 backdrop-blur-xl rounded-3xl border border-white/10 hover:bg-white/20 transition-all duration-300 shadow-2xl hover:-translate-y-2 group">
+                                        <div className="w-14 h-14 bg-gradient-to-br from-teal-500/20 to-teal-500/5 text-teal-400 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                                            <ShieldCheck size={28} />
                                         </div>
-                                        <h3 className="text-lg font-bold text-slate-900">Secure Records</h3>
-                                        <p className="text-slate-500 text-sm mt-1">100% Data Privacy</p>
+                                        <h3 className="text-xl font-bold text-white mb-2">Secure Data</h3>
+                                        <p className="text-slate-400 text-sm">Encrypted records ensuring 100% privacy.</p>
                                     </div>
-                                    <div className="p-6 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-50 hover:-translate-y-1 transition-transform duration-300">
-                                        <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-4">
-                                            <FlaskConical size={24} />
+                                    <div className="p-6 bg-white/10 backdrop-blur-xl rounded-3xl border border-white/10 hover:bg-white/20 transition-all duration-300 shadow-2xl hover:-translate-y-2 group">
+                                        <div className="w-14 h-14 bg-gradient-to-br from-purple-500/20 to-purple-500/5 text-purple-400 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                                            <FlaskConical size={28} />
                                         </div>
-                                        <h3 className="text-lg font-bold text-slate-900">Lab Services</h3>
-                                        <p className="text-slate-500 text-sm mt-1">Advanced Testing</p>
+                                        <h3 className="text-xl font-bold text-white mb-2">Advanced Lab</h3>
+                                        <p className="text-slate-400 text-sm">State-of-the-art testing & diagnostics.</p>
                                     </div>
                                 </div>
                             </div>
-                            {/* Decorative background circle */}
-                            <div className="absolute inset-0 bg-gradient-to-tr from-primary-100 to-secondary-100 rounded-full blur-3xl -z-10 transform scale-110"></div>
                         </div>
                     </div>
                 </div>
