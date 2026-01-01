@@ -5,9 +5,9 @@ import { loginAPI, loginWithPasswordAPI, registerAPI } from '../services/api';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, role: Role) => Promise<void>;
-  loginWithPassword: (identifier: string, password: string) => Promise<void>;
-  register: (data: Partial<User>) => Promise<void>;
+  login: (email: string, role: Role) => Promise<User>;
+  loginWithPassword: (identifier: string, password: string) => Promise<User>;
+  register: (data: Partial<User>) => Promise<User>;
   logout: () => void;
 }
 
@@ -29,26 +29,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const login = async (email: string, role: Role) => {
+  const login = async (email: string, role: Role): Promise<User> => {
     setLoading(true);
     try {
       const userData = await loginAPI(email, role);
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
+      return userData;
     } catch (error) {
       console.error(error);
       alert("Login Failed: Use demo credentials (see login page)");
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const loginWithPassword = async (identifier: string, password: string) => {
+  const loginWithPassword = async (identifier: string, password: string): Promise<User> => {
     setLoading(true);
     try {
       const userData = await loginWithPasswordAPI(identifier, password);
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
+      return userData;
     } catch (error: any) {
       console.error(error);
       alert(error.message || "Login Failed");
@@ -58,15 +61,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const register = async (data: Partial<User>) => {
+  const register = async (data: Partial<User>): Promise<User> => {
     setLoading(true);
     try {
       const newUser = await registerAPI(data);
       setUser(newUser);
       localStorage.setItem('user', JSON.stringify(newUser));
+      return newUser;
     } catch (error) {
       console.error(error);
       alert("Registration failed");
+      throw error;
     } finally {
       setLoading(false);
     }

@@ -68,9 +68,18 @@ export const Login = () => {
     const { login, loginWithPassword, user } = useAuth();
     const navigate = useNavigate();
 
+    const getDashboardPath = (role: Role) => {
+        switch (role) {
+            case Role.PATIENT: return '/patient';
+            case Role.DOCTOR: return '/doctor';
+            case Role.ADMIN: return '/admin';
+            default: return '/';
+        }
+    };
+
     useEffect(() => {
         if (user) {
-            navigate('/patient');
+            navigate(getDashboardPath(user.role));
         }
     }, [user, navigate]);
 
@@ -111,7 +120,7 @@ export const Login = () => {
         try {
             const user = await verifyOtpAPI(phone, otp);
             await login(user.email || '', user.role);
-            navigate('/patient');
+            navigate(getDashboardPath(user.role));
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -124,8 +133,8 @@ export const Login = () => {
         setError('');
         setLoading(true);
         try {
-            await loginWithPassword(identifier, password);
-            navigate('/patient');
+            const user = await loginWithPassword(identifier, password);
+            navigate(getDashboardPath(user.role));
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -143,7 +152,7 @@ export const Login = () => {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 py-12 px-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col transition-all duration-500">
                 <AuthCardHeader
-                    title={loginMethod === 'otp' ? (step === 'phone' ? "Patient Login" : "Verify OTP") : "Welcome Back"}
+                    title={loginMethod === 'otp' ? (step === 'phone' ? "Login" : "Verify OTP") : "Welcome Back"}
                     subtitle={loginMethod === 'otp' ? "Login with your mobile number" : "Login with email, phone or passkey"}
                 />
 
@@ -273,7 +282,21 @@ export const Login = () => {
                         )
                     )}
 
-                    <p className="text-center mt-10 text-slate-500 text-sm">
+                    <div className="mt-8 pt-6 border-t border-slate-100">
+                        <div className="text-xs text-slate-400 font-semibold mb-3 tracking-wider uppercase text-center">Demo Credentials</div>
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => { setIdentifier('admin@medicore.com'); setPassword('123456'); setLoginMethod('password'); }}>
+                                <div className="font-bold text-slate-700">Admin</div>
+                                <div className="text-slate-500 truncate">admin@medicore.com</div>
+                            </div>
+                            <div className="p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => { setIdentifier('john.smith@medicore.com'); setPassword('123456'); setLoginMethod('password'); }}>
+                                <div className="font-bold text-slate-700">Doctor</div>
+                                <div className="text-slate-500 truncate">john.smith@medicore.com</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p className="text-center mt-6 text-slate-500 text-sm">
                         New patient? <Link to="/register" className="text-secondary-600 font-bold hover:underline">Create an account</Link>
                     </p>
                 </div>
@@ -319,7 +342,10 @@ export const Register = () => {
                 patientDetails: { dob, gender, bloodGroup: '' }
             });
             await login(user.email || '', user.role);
-            navigate('/patient');
+            // Default to patient dashboard for new registrations usually, but safest to use role
+            if (user.role === Role.DOCTOR) navigate('/doctor');
+            else if (user.role === Role.ADMIN) navigate('/admin');
+            else navigate('/patient');
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -601,5 +627,7 @@ export const Home = () => {
         </div>
     );
 };
-export const Doctors = () => { /* No changes to Doctors component */ return null; };
-export const Facilities = () => { /* No changes to Facilities component */ return null; };
+export { Doctors } from './Doctors';
+export { Facilities } from './Facilities';
+export { About } from './About';
+export { Contact } from './Contact';

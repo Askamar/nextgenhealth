@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DashboardLayout, PublicLayout } from './components/Layout';
-import { Home, Doctors, Login, Register, Facilities } from './pages/PublicPages';
+import { Home, Doctors, Login, Register, Facilities, About, Contact } from './pages/PublicPages';
 import { PatientDashboard, BookAppointment, MedicalReports, PatientProfile } from './pages/patient/PatientPortal';
 import { AdminDashboard, ManageDoctors, AppointmentManagement } from './pages/admin/AdminPortal';
 import { ManagePatients } from './pages/admin/ManagePatients';
 import { VaccinationManager } from './pages/admin/VaccinationManager';
 import { DoctorDashboard } from './pages/doctor/DoctorPortal';
 import { Role } from './types';
+import { SplashScreen } from './components/SplashScreen';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: Role[] }) => {
   const { user, loading } = useAuth();
@@ -18,7 +19,15 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
   return <DashboardLayout>{children}</DashboardLayout>;
 };
 
+
+
 const App = () => {
+  const [showSplash, setShowSplash] = useState(true);
+
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
+
   return (
     <AuthProvider>
       <Router>
@@ -26,6 +35,8 @@ const App = () => {
           <Route path="/" element={<PublicLayout><Home /></PublicLayout>} />
           <Route path="/doctors" element={<PublicLayout><Doctors /></PublicLayout>} />
           <Route path="/facilities" element={<PublicLayout><Facilities /></PublicLayout>} />
+          <Route path="/about" element={<PublicLayout><About /></PublicLayout>} />
+          <Route path="/contact" element={<PublicLayout><Contact /></PublicLayout>} />
           <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
           <Route path="/register" element={<PublicLayout><Register /></PublicLayout>} />
 
