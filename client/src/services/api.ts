@@ -16,7 +16,7 @@ const MockAPI = {
     requestOtp: async (phone: string, isRegistration: boolean): Promise<{ success: boolean; message: string }> => {
         await delay(1000);
         const userExists = USERS.some(u => u.phone === phone);
-        
+
         if (isRegistration && userExists) {
             throw new Error('This phone number is already registered.');
         }
@@ -27,6 +27,7 @@ const MockAPI = {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         MOCK_OTPS[phone] = otp;
         console.log(`[DEV MODE] OTP for ${phone}: ${otp}`);
+        alert(`[DEV MODE] Your verification code is: ${otp}`);
         return { success: true, message: 'OTP sent successfully' };
     },
     verifyOtp: async (phone: string, otp: string, userData?: Partial<User>): Promise<User> => {
@@ -36,7 +37,7 @@ const MockAPI = {
         }
 
         let user = USERS.find(u => u.phone === phone);
-        
+
         if (!user && userData) {
             // Register flow
             user = {
@@ -45,10 +46,10 @@ const MockAPI = {
                 phone: phone,
                 role: Role.PATIENT,
                 avatar: `https://ui-avatars.com/api/?name=${userData.name}`,
-                patientDetails: { 
-                    dob: userData.patientDetails?.dob || '', 
-                    bloodGroup: '', 
-                    gender: userData.patientDetails?.gender || 'Other' 
+                patientDetails: {
+                    dob: userData.patientDetails?.dob || '',
+                    bloodGroup: '',
+                    gender: userData.patientDetails?.gender || 'Other'
                 }
             };
             USERS.push(user);
@@ -62,6 +63,20 @@ const MockAPI = {
         await delay(800);
         const user = USERS.find(u => u.email === email && u.role === role);
         if (!user) throw new Error('Invalid credentials');
+        return user;
+    },
+    loginWithPassword: async (identifier: string, password: string): Promise<User> => {
+        await delay(1000);
+        // Allow mock login with any password >= 3 chars for demo, or specific ones.
+        // Identify if identifier is phone or email
+        const user = USERS.find(u => u.email === identifier || u.phone === identifier);
+        if (!user) throw new Error('User not found');
+
+        // In a real app, verify password hash here.
+        // For this mock/demo, we'll assume any non-empty password is valid if user exists,
+        // unless we want to simulate failure.
+        if (password.length < 3) throw new Error('Invalid password');
+
         return user;
     },
     register: async (data: Partial<User>): Promise<User> => {
@@ -87,7 +102,7 @@ const MockAPI = {
     deleteDoctor: async (id: string) => {
         await delay(500);
         const idx = USERS.findIndex(u => u.id === id);
-        if(idx > -1) USERS.splice(idx, 1);
+        if (idx > -1) USERS.splice(idx, 1);
     },
     getPatients: async (): Promise<User[]> => { await delay(500); return USERS.filter(u => u.role === Role.PATIENT); },
     createPatient: async (data: any): Promise<User> => {
@@ -99,7 +114,7 @@ const MockAPI = {
     deletePatient: async (id: string) => {
         await delay(500);
         const idx = USERS.findIndex(u => u.id === id);
-        if(idx > -1) USERS.splice(idx, 1);
+        if (idx > -1) USERS.splice(idx, 1);
     },
     getAppointments: async (userId: string, role: Role): Promise<Appointment[]> => {
         await delay(600);
@@ -119,14 +134,14 @@ const MockAPI = {
         if (appt) appt.status = status;
     },
     getVaccines: async (): Promise<Vaccine[]> => { await delay(500); return VACCINES; },
-    addVaccine: async (v: any): Promise<Vaccine> => { 
-        const newV = { ...v, id: `vac${Math.random()}` }; 
-        VACCINES.push(newV); 
-        return newV; 
+    addVaccine: async (v: any): Promise<Vaccine> => {
+        const newV = { ...v, id: `vac${Math.random()}` };
+        VACCINES.push(newV);
+        return newV;
     },
     deleteVaccine: async (id: string) => {
         const idx = VACCINES.findIndex(v => v.id === id);
-        if(idx > -1) VACCINES.splice(idx, 1);
+        if (idx > -1) VACCINES.splice(idx, 1);
     },
     getMedicalReports: async (uid: string) => REPORTS,
     getNotifications: async (uid: string) => NOTIFICATIONS,
@@ -147,6 +162,7 @@ const MockAPI = {
 export const requestOtpAPI = MockAPI.requestOtp;
 export const verifyOtpAPI = MockAPI.verifyOtp;
 export const loginAPI = MockAPI.login;
+export const loginWithPasswordAPI = MockAPI.loginWithPassword;
 export const registerAPI = MockAPI.register;
 
 export const getDoctorsAPI = MockAPI.getDoctors;

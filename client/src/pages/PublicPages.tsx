@@ -8,7 +8,8 @@ import { Card, Button } from '../components/Components';
 import {
     Stethoscope, Activity, FlaskConical,
     ArrowRight, Phone, ShieldCheck,
-    Smartphone, Loader2, Users, Calendar, Clock
+    Smartphone, Loader2, Users, Calendar, Clock,
+    Mail, Key, Lock, Fingerprint
 } from 'lucide-react';
 import heroBg from '../assets/hero_bg.png';
 
@@ -64,11 +65,27 @@ const OtpInputGroup = ({ value, onChange }: { value: string; onChange: (val: str
 };
 
 export const Login = () => {
-    const { login } = useAuth();
+    const { login, loginWithPassword, user } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (user) {
+            navigate('/patient');
+        }
+    }, [user, navigate]);
+
+    // Login Methods: 'password' | 'otp'
+    const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
+
+    // OTP State
     const [step, setStep] = useState<'phone' | 'otp'>('phone');
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
+
+    // Password State
+    const [identifier, setIdentifier] = useState('');
+    const [password, setPassword] = useState('');
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -93,7 +110,6 @@ export const Login = () => {
         setLoading(true);
         try {
             const user = await verifyOtpAPI(phone, otp);
-            // In real app, we use AuthContext login to handle session
             await login(user.email || '', user.role);
             navigate('/patient');
         } catch (err: any) {
@@ -103,13 +119,49 @@ export const Login = () => {
         }
     };
 
+    const handlePasswordLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            await loginWithPassword(identifier, password);
+            navigate('/patient');
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handlePasskeyLogin = () => {
+        alert("Passkey login flow initiated...");
+        // In real implementation:
+        // navigator.credentials.get({ publicKey: ... })
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 py-12 px-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col transition-all duration-500">
                 <AuthCardHeader
-                    title={step === 'phone' ? "Patient Login" : "Verify OTP"}
-                    subtitle={step === 'phone' ? "Enter your phone number to receive an access code" : `We sent a 6-digit code to ${phone}`}
+                    title={loginMethod === 'otp' ? (step === 'phone' ? "Patient Login" : "Verify OTP") : "Welcome Back"}
+                    subtitle={loginMethod === 'otp' ? "Login with your mobile number" : "Login with email, phone or passkey"}
                 />
+
+                {/* Login Method Tabs */}
+                <div className="flex border-b border-slate-100">
+                    <button
+                        className={`flex-1 py-4 text-sm font-bold transition-colors ${loginMethod === 'password' ? 'text-secondary-600 border-b-2 border-secondary-500' : 'text-slate-400 hover:text-slate-600'}`}
+                        onClick={() => setLoginMethod('password')}
+                    >
+                        Password / Passkey
+                    </button>
+                    <button
+                        className={`flex-1 py-4 text-sm font-bold transition-colors ${loginMethod === 'otp' ? 'text-secondary-600 border-b-2 border-secondary-500' : 'text-slate-400 hover:text-slate-600'}`}
+                        onClick={() => setLoginMethod('otp')}
+                    >
+                        Mobile OTP
+                    </button>
+                </div>
 
                 <div className="p-8">
                     {error && (
@@ -118,47 +170,107 @@ export const Login = () => {
                         </div>
                     )}
 
-                    {step === 'phone' ? (
-                        <form onSubmit={handleRequestOtp} className="space-y-6">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
-                                <div className="relative">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                        <Phone size={18} />
+                    {loginMethod === 'password' ? (
+                        <div className="space-y-6">
+                            <form onSubmit={handlePasswordLogin} className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Email or Phone</label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                            <Mail size={18} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-100 focus:border-secondary-500 focus:ring-4 focus:ring-secondary-500/10 outline-none transition-all bg-slate-50 font-medium"
+                                            placeholder="john@example.com or +1555..."
+                                            value={identifier}
+                                            onChange={(e) => setIdentifier(e.target.value)}
+                                            required
+                                        />
                                     </div>
-                                    <input
-                                        type="tel"
-                                        className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-100 focus:border-secondary-500 focus:ring-4 focus:ring-secondary-500/10 outline-none transition-all bg-slate-50 font-medium"
-                                        placeholder="+1 (555) 000-0000"
-                                        value={phone}
-                                        onChange={(e) => setPhone(e.target.value)}
-                                        required
-                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                            <Lock size={18} />
+                                        </div>
+                                        <input
+                                            type="password"
+                                            className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-100 focus:border-secondary-500 focus:ring-4 focus:ring-secondary-500/10 outline-none transition-all bg-slate-50 font-medium"
+                                            placeholder="••••••••"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <Button type="submit" disabled={loading} className="w-full py-4 text-lg bg-secondary-500 hover:bg-secondary-600 shadow-secondary-500/30">
+                                    {loading ? <Loader2 className="animate-spin" /> : "Login"}
+                                </Button>
+                            </form>
+
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-slate-200"></div>
+                                </div>
+                                <div className="relative flex justify-center text-sm">
+                                    <span className="px-2 bg-white text-slate-500">Or continue with</span>
                                 </div>
                             </div>
-                            <Button type="submit" disabled={loading} className="w-full py-4 text-lg bg-secondary-500 hover:bg-secondary-600 shadow-secondary-500/30">
-                                {loading ? <Loader2 className="animate-spin" /> : "Request OTP"}
-                            </Button>
-                        </form>
+
+                            <button
+                                onClick={handlePasskeyLogin}
+                                className="w-full py-4 rounded-xl border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all font-bold text-slate-700 flex items-center justify-center gap-2"
+                            >
+                                <Fingerprint size={20} className="text-secondary-500" />
+                                Sign in with Passkey
+                            </button>
+                        </div>
                     ) : (
-                        <form onSubmit={handleVerifyOtp} className="space-y-8">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-4 text-center">Verification Code</label>
-                                <OtpInputGroup value={otp} onChange={setOtp} />
-                            </div>
-                            <div className="space-y-4">
-                                <Button type="submit" disabled={loading || otp.length < 6} className="w-full py-4 text-lg bg-secondary-500 hover:bg-secondary-600">
-                                    {loading ? <Loader2 className="animate-spin" /> : "Verify & Login"}
+                        // Existing OTP Flow
+                        step === 'phone' ? (
+                            <form onSubmit={handleRequestOtp} className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                            <Phone size={18} />
+                                        </div>
+                                        <input
+                                            type="tel"
+                                            className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-100 focus:border-secondary-500 focus:ring-4 focus:ring-secondary-500/10 outline-none transition-all bg-slate-50 font-medium"
+                                            placeholder="+1 (555) 000-0000"
+                                            value={phone}
+                                            onChange={(e) => setPhone(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <Button type="submit" disabled={loading} className="w-full py-4 text-lg bg-secondary-500 hover:bg-secondary-600 shadow-secondary-500/30">
+                                    {loading ? <Loader2 className="animate-spin" /> : "Request OTP"}
                                 </Button>
-                                <button
-                                    type="button"
-                                    onClick={() => setStep('phone')}
-                                    className="w-full text-slate-400 text-sm hover:text-slate-600 transition-colors"
-                                >
-                                    Change phone number
-                                </button>
-                            </div>
-                        </form>
+                            </form>
+                        ) : (
+                            <form onSubmit={handleVerifyOtp} className="space-y-8">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-4 text-center">Verification Code</label>
+                                    <OtpInputGroup value={otp} onChange={setOtp} />
+                                </div>
+                                <div className="space-y-4">
+                                    <Button type="submit" disabled={loading || otp.length < 6} className="w-full py-4 text-lg bg-secondary-500 hover:bg-secondary-600">
+                                        {loading ? <Loader2 className="animate-spin" /> : "Verify & Login"}
+                                    </Button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep('phone')}
+                                        className="w-full text-slate-400 text-sm hover:text-slate-600 transition-colors"
+                                    >
+                                        Change phone number
+                                    </button>
+                                </div>
+                            </form>
+                        )
                     )}
 
                     <p className="text-center mt-10 text-slate-500 text-sm">
