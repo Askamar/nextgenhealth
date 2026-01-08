@@ -29,3 +29,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Security
+.env
+.env.test
+.env.production
+*.key
+*.pem
+*.cert
+credentials.json
+secrets.json
+

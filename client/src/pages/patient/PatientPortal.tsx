@@ -134,9 +134,9 @@ export const BookAppointment = () => {
                         <div className="bg-slate-50 p-6 rounded-2xl border border-gray-200"><h3 className="font-bold text-lg mb-6">Appointment Summary</h3><div className="space-y-4"><div className="flex items-center gap-4"><img src={selectedDoctor?.avatar} className="w-12 h-12 rounded-full" alt="" /><div><p className="font-bold text-slate-900">{selectedDoctor?.name}</p><p className="text-sm text-slate-500">{selectedDoctor?.doctorDetails.specialization}</p></div></div><div className="h-px bg-gray-200 my-4"></div><div className="flex justify-between text-sm"><span className="text-slate-500">Date</span><span className="font-semibold text-slate-800">{date}</span></div><div className="flex justify-between text-sm"><span className="text-slate-500">Time</span><span className="font-semibold text-slate-800">{time}</span></div></div><Button className="w-full mt-8" onClick={() => {
                             if (selectedDoctor && user) {
                                 createAppointmentAPI({
-                                    patientId: user.id,
+                                    patientId: user.id || (user as any)._id,
                                     patientName: user.name,
-                                    doctorId: selectedDoctor.id,
+                                    doctorId: selectedDoctor.id || (selectedDoctor as any)._id,
                                     doctorName: selectedDoctor.name,
                                     department: department,
                                     date: date,
