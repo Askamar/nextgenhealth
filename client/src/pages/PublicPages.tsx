@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Role } from '../types';
-import { getDoctorsAPI, requestOtpAPI, verifyOtpAPI } from '../services/api';
+import { getDoctorsAPI, requestOtpAPI, verifyOtpAPI, registerAPI, forgotPasswordAPI, resetPasswordAPI } from '../services/api';
 import { User } from '../types';
 import { Card, Button } from '../components/Components';
 import {
@@ -213,6 +213,15 @@ export const Login = () => {
                                             required
                                         />
                                     </div>
+                                    <div className="text-right mt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate('/forgot-password')}
+                                            className="text-sm font-medium text-secondary-600 hover:text-secondary-700 hover:underline"
+                                        >
+                                            Forgot Password?
+                                        </button>
+                                    </div>
                                 </div>
                                 <Button type="submit" disabled={loading} className="w-full py-4 text-lg bg-secondary-500 hover:bg-secondary-600 shadow-secondary-500/30">
                                     {loading ? <Loader2 className="animate-spin" /> : "Login"}
@@ -305,49 +314,100 @@ export const Login = () => {
     );
 };
 
+// Direct Registration Flow (No OTP for initial test)
 export const Register = () => {
-    const { login } = useAuth();
+    // const { login } = useAuth(); // Not logging in automatically anymore
     const navigate = useNavigate();
-    const [step, setStep] = useState<'details' | 'otp'>('details');
+    // Removed 'otp' step
     const [phone, setPhone] = useState('');
-    const [otp, setOtp] = useState('');
+    const [email, setEmail] = useState('');
     const [name, setName] = useState('');
     const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
     const [dob, setDob] = useState('');
+
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    // New Fields State
+    const [addressStreet, setAddressStreet] = useState('');
+    const [addressCity, setAddressCity] = useState('');
+    const [addressState, setAddressState] = useState('');
+    const [addressPincode, setAddressPincode] = useState('');
+    const [govIdType, setGovIdType] = useState('');
+    const [govIdNumber, setGovIdNumber] = useState('');
+
+    const [captchaInput, setCaptchaInput] = useState('');
+    const [captchaValue, setCaptchaValue] = useState('');
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const handleRequestOtp = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-        try {
-            await requestOtpAPI(phone, true);
-            setStep('otp');
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
+    useEffect(() => {
+        regenerateCaptcha();
+    }, []);
+
+    const regenerateCaptcha = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let result = '';
+        for (let i = 0; i < 6; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
         }
+        setCaptchaValue(result);
+        setCaptchaInput('');
     };
 
-    const handleVerifyAndRegister = async (e: React.FormEvent) => {
+    const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (otp.length < 6) return;
         setError('');
+
+        if (password !== confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
+        if (captchaInput !== captchaValue) {
+            setError('Invalid Captcha. Please try again.');
+            regenerateCaptcha();
+            return;
+        }
+
         setLoading(true);
+
         try {
-            const user = await verifyOtpAPI(phone, otp, {
+            // Calculate Age
+            const birthDate = new Date(dob);
+            const ageDifMs = Date.now() - birthDate.getTime();
+            const ageDate = new Date(ageDifMs);
+            const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+
+            // Call Register API directly
+            await registerAPI({
+                phone,
                 name,
-                patientDetails: { dob, gender, bloodGroup: '' }
+                email,
+                password,
+                address: {
+                    street: addressStreet,
+                    city: addressCity,
+                    state: addressState,
+                    pincode: addressPincode
+                },
+                patientDetails: {
+                    dob,
+                    age,
+                    gender,
+                    bloodGroup: '',
+                    govId: govIdType ? { type: govIdType, number: govIdNumber } : undefined
+                }
             });
-            await login(user.email || '', user.role);
-            // Default to patient dashboard for new registrations usually, but safest to use role
-            if (user.role === Role.DOCTOR) navigate('/doctor');
-            else if (user.role === Role.ADMIN) navigate('/admin');
-            else navigate('/patient');
+
+            // On success
+            alert('Registration Successful! Please login with your credentials.');
+            navigate('/login');
+
         } catch (err: any) {
             setError(err.message);
+            regenerateCaptcha();
         } finally {
             setLoading(false);
         }
@@ -357,8 +417,8 @@ export const Register = () => {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 py-12 px-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col">
                 <AuthCardHeader
-                    title={step === 'details' ? "New Patient Registration" : "Verify Your Phone"}
-                    subtitle={step === 'details' ? "Provide your basic details to get started" : `We sent a code to ${phone}`}
+                    title="New Patient Registration"
+                    subtitle="Provide your basic details to create an account"
                 />
 
                 <div className="p-8">
@@ -368,81 +428,204 @@ export const Register = () => {
                         </div>
                     )}
 
-                    {step === 'details' ? (
-                        <form onSubmit={handleRequestOtp} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
+                    <form onSubmit={handleRegister} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                    placeholder="John Doe"
+                                    value={name}
+                                    onChange={e => setName(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
+                                <input
+                                    type="tel"
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                    placeholder="+1 (555) 000-0000"
+                                    value={phone}
+                                    onChange={e => setPhone(e.target.value)}
+                                    required
+                                />
+                            </div>
+
+                            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
                                     <input
-                                        type="text"
+                                        type="password"
                                         className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
-                                        placeholder="John Doe"
-                                        value={name}
-                                        onChange={e => setName(e.target.value)}
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
                                         required
+                                        minLength={6}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Retype Password</label>
                                     <input
-                                        type="tel"
+                                        type="password"
                                         className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
-                                        placeholder="+1 (555) 000-0000"
-                                        value={phone}
-                                        onChange={e => setPhone(e.target.value)}
+                                        placeholder="••••••••"
+                                        value={confirmPassword}
+                                        onChange={e => setConfirmPassword(e.target.value)}
                                         required
+                                        minLength={6}
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Date of Birth</label>
-                                    <input
-                                        type="date"
-                                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
-                                        value={dob}
-                                        onChange={e => setDob(e.target.value)}
-                                        required
-                                    />
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Email Address <span className="text-slate-400 font-normal">(Optional)</span></label>
+                                <input
+                                    type="email"
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                    placeholder="john@example.com"
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Date of Birth</label>
+                                <input
+                                    type="date"
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                    value={dob}
+                                    onChange={e => setDob(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Gender</label>
+                                <div className="flex gap-4">
+                                    {['Male', 'Female', 'Other'].map((g) => (
+                                        <button
+                                            key={g}
+                                            type="button"
+                                            onClick={() => setGender(g as any)}
+                                            className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${gender === g ? 'bg-secondary-500 border-secondary-500 text-white' : 'border-slate-100 text-slate-400 hover:border-slate-200'}`}
+                                        >
+                                            {g}
+                                        </button>
+                                    ))}
                                 </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Gender</label>
-                                    <div className="flex gap-4">
-                                        {['Male', 'Female', 'Other'].map((g) => (
-                                            <button
-                                                key={g}
-                                                type="button"
-                                                onClick={() => setGender(g as any)}
-                                                className={`flex-1 py-3 rounded-xl border-2 transition-all font-bold ${gender === g ? 'bg-secondary-500 border-secondary-500 text-white' : 'border-slate-100 text-slate-400 hover:border-slate-200'}`}
-                                            >
-                                                {g}
-                                            </button>
-                                        ))}
+                            </div>
+
+                            <div className="md:col-span-2 border-t pt-4 border-slate-100">
+                                <h4 className="font-bold text-slate-800 mb-4">Address Details</h4>
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Address Line</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                    placeholder="123 Main St"
+                                    name="address_street"
+                                    value={addressStreet}
+                                    onChange={e => setAddressStreet(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">City</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                    placeholder="New York"
+                                    value={addressCity}
+                                    onChange={e => setAddressCity(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">State</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                    placeholder="NY"
+                                    value={addressState}
+                                    onChange={e => setAddressState(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Pincode</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                    placeholder="10001"
+                                    value={addressPincode}
+                                    onChange={e => setAddressPincode(e.target.value)}
+                                    required
+                                />
+                            </div>
+
+                            <div className="md:col-span-2 border-t pt-4 border-slate-100">
+                                <h4 className="font-bold text-slate-800 mb-4">Optional Details</h4>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Government ID Type</label>
+                                <select
+                                    name="govId_type"
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                    value={govIdType}
+                                    onChange={e => setGovIdType(e.target.value)}
+                                >
+                                    <option value="">Select ID Type</option>
+                                    <option value="Aadhaar">Aadhaar Card</option>
+                                    <option value="PAN">PAN Card</option>
+                                    <option value="Passport">Passport</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">ID Number</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                    placeholder="XXXX-XXXX-XXXX"
+                                    value={govIdNumber}
+                                    onChange={e => setGovIdNumber(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="md:col-span-2 border-t pt-4 border-slate-100">
+                                <h4 className="font-bold text-slate-800 mb-4">Verification</h4>
+                                <div className="flex flex-col md:flex-row gap-4 items-center">
+                                    <div className="bg-slate-100 p-4 rounded-xl font-mono text-2xl font-bold tracking-widest text-slate-700 select-none w-full md:w-auto text-center">
+                                        {captchaValue}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={regenerateCaptcha}
+                                        className="text-secondary-600 hover:text-secondary-700 font-medium text-sm"
+                                    >
+                                        Refresh
+                                    </button>
+                                    <div className="flex-1 w-full">
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                            placeholder="Enter Captcha"
+                                            value={captchaInput}
+                                            onChange={e => setCaptchaInput(e.target.value)}
+                                            required
+                                        />
                                     </div>
                                 </div>
                             </div>
-                            <Button type="submit" disabled={loading} className="w-full py-4 text-lg bg-secondary-500 hover:bg-secondary-600 shadow-secondary-500/30 mt-6">
-                                {loading ? <Loader2 className="animate-spin" /> : "Send Verification Code"}
-                            </Button>
-                        </form>
-                    ) : (
-                        <form onSubmit={handleVerifyAndRegister} className="space-y-8">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-4 text-center">Verification Code</label>
-                                <OtpInputGroup value={otp} onChange={setOtp} />
-                            </div>
-                            <div className="space-y-4">
-                                <Button type="submit" disabled={loading || otp.length < 6} className="w-full py-4 text-lg bg-secondary-500 hover:bg-secondary-600">
-                                    {loading ? <Loader2 className="animate-spin" /> : "Complete Registration"}
-                                </Button>
-                                <button
-                                    type="button"
-                                    onClick={() => setStep('details')}
-                                    className="w-full text-slate-400 text-sm hover:text-slate-600 transition-colors"
-                                >
-                                    Change details
-                                </button>
-                            </div>
-                        </form>
-                    )}
+                        </div>
+
+                        <Button type="submit" disabled={loading} className="w-full py-4 text-lg bg-secondary-500 hover:bg-secondary-600 shadow-secondary-500/30 mt-6">
+                            {loading ? <Loader2 className="animate-spin" /> : "Register & Create Account"}
+                        </Button>
+                    </form>
 
                     <p className="text-center mt-10 text-slate-500 text-sm">
                         Already have an account? <Link to="/login" className="text-secondary-600 font-bold hover:underline">Login here</Link>
@@ -627,6 +810,176 @@ export const Home = () => {
         </div>
     );
 };
+export const ForgotPassword = () => {
+    const navigate = useNavigate();
+    const [identifier, setIdentifier] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            await forgotPasswordAPI(identifier);
+            // Navigate to reset password page with identifier in state
+            navigate('/reset-password', { state: { identifier } });
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 py-12 px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
+                <AuthCardHeader
+                    title="Forgot Password"
+                    subtitle="Enter your email or phone to receive a reset code"
+                />
+                <div className="p-8">
+                    {error && (
+                        <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium border border-red-100 flex items-center gap-2">
+                            <Activity size={16} /> {error}
+                        </div>
+                    )}
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Email or Phone</label>
+                            <input
+                                type="text"
+                                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                placeholder="john@example.com or +1555..."
+                                value={identifier}
+                                onChange={e => setIdentifier(e.target.value)}
+                                required
+                            />
+                        </div>
+                        <Button type="submit" disabled={loading} className="w-full py-4 text-lg bg-secondary-500 hover:bg-secondary-600 shadow-secondary-500/30">
+                            {loading ? <Loader2 className="animate-spin" /> : "Send Reset Code"}
+                        </Button>
+                    </form>
+                    <div className="mt-6 text-center">
+                        <Link to="/login" className="text-secondary-600 font-bold hover:underline">Back to Login</Link>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export const ResetPassword = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const [otp, setOtp] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    // Get identifier from navigation state or fallback to prompt (though prompt is not ideal UI)
+    const [identifier, setIdentifier] = useState(location.state?.identifier || '');
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+
+        if (newPassword !== confirmPassword) {
+            setError("Passwords do not match");
+            return;
+        }
+
+        if (!identifier) {
+            setError("Missing identifier (email/phone). Please start over.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await resetPasswordAPI(identifier, otp, newPassword);
+            alert('Password reset successful! Please login with your new password.');
+            navigate('/login');
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 py-12 px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
+                <AuthCardHeader
+                    title="Reset Password"
+                    subtitle="Enter the code sent to you and your new password"
+                />
+                <div className="p-8">
+                    {error && (
+                        <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium border border-red-100 flex items-center gap-2">
+                            <Activity size={16} /> {error}
+                        </div>
+                    )}
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {!location.state?.identifier && (
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Email or Phone</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                    placeholder="Confirm your identifier"
+                                    value={identifier}
+                                    onChange={e => setIdentifier(e.target.value)}
+                                    required
+                                />
+                            </div>
+                        )}
+
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Verification Code</label>
+                            <input
+                                type="text"
+                                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                placeholder="Enter OTP"
+                                value={otp}
+                                onChange={e => setOtp(e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">New Password</label>
+                            <input
+                                type="password"
+                                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                placeholder="••••••••"
+                                value={newPassword}
+                                onChange={e => setNewPassword(e.target.value)}
+                                required
+                                minLength={6}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Confirm New Password</label>
+                            <input
+                                type="password"
+                                className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-secondary-500 outline-none bg-slate-50 transition-all font-medium"
+                                placeholder="••••••••"
+                                value={confirmPassword}
+                                onChange={e => setConfirmPassword(e.target.value)}
+                                required
+                                minLength={6}
+                            />
+                        </div>
+                        <Button type="submit" disabled={loading} className="w-full py-4 text-lg bg-secondary-500 hover:bg-secondary-600 shadow-secondary-500/30">
+                            {loading ? <Loader2 className="animate-spin" /> : "Reset Password"}
+                        </Button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export { Doctors } from './Doctors';
 export { Facilities } from './Facilities';
 export { About } from './About';

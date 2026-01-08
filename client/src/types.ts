@@ -19,14 +19,26 @@ export interface User {
   phone: string; // Primary identifier for Patients
   role: Role;
   avatar?: string;
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    pincode: string;
+  };
   patientDetails?: {
+    patientId?: string;
     dob: string;
-    bloodGroup: string;
+    age?: number;
+    bloodGroup?: string;
     gender: 'Male' | 'Female' | 'Other';
     allergies?: string;
     weight?: string;
     height?: string;
     lastVisit?: string;
+    govId?: {
+      type: string;
+      number: string;
+    }
   };
   doctorDetails?: {
     specialization: string;
@@ -84,4 +96,20 @@ export interface Vaccine {
   date: string;
   batchNumber: string;
   stock: number;
+}
+
+
+
+export interface Token {
+  _id: string; // Mongoose ID
+  patientId: string;
+  patientName: string;
+  doctorId: string; // or Doctor object if populated
+  tokenNumber: number;
+  status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  type: 'REGULAR' | 'EMERGENCY';
+  estimatedTime?: string;
+  startTime?: string;
+  endTime?: string;
+  createdAt: string;
 }

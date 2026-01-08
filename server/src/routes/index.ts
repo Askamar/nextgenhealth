@@ -9,13 +9,16 @@ const router = express.Router();
 router.post('/auth/login', authController.login);
 router.post('/auth/otp/request', authController.requestOtp);
 router.post('/auth/otp/verify', authController.verifyOtp);
+router.post('/auth/register', authController.register);
+router.post('/auth/forgot-password', authController.forgotPassword);
+router.post('/auth/reset-password', authController.resetPassword);
 
 // --- USERS ---
 router.get('/users', async (req, res) => {
-  const role = req.query.role;
-  const filter = role ? { role } : {};
-  const users = await User.find(filter);
-  res.json(users);
+    const role = req.query.role;
+    const filter = role ? { role } : {};
+    const users = await User.find(filter);
+    res.json(users);
 });
 
 router.post('/users', async (req, res) => {
@@ -39,7 +42,7 @@ router.get('/appointments', async (req, res) => {
     let query = {};
     if (role === 'PATIENT') query = { patientId: userId };
     else if (role === 'DOCTOR') query = { doctorId: userId };
-    
+
     const appointments = await Appointment.find(query);
     res.json(appointments);
 });
@@ -51,7 +54,7 @@ router.post('/appointments', async (req, res) => {
 
 router.put('/appointments/:id/status', async (req, res) => {
     const appt = await Appointment.findByIdAndUpdate(
-        req.params.id, 
+        req.params.id,
         { status: req.body.status },
         { new: true }
     );
@@ -79,5 +82,15 @@ router.get('/reports', async (req, res) => {
     const reports = await MedicalReport.find({ userId: req.query.userId });
     res.json(reports);
 });
+
+// --- QUEUE MANAGEMENT ---
+import * as queueController from '../controllers/queueController';
+
+router.post('/queue/register', queueController.registerToken);
+router.get('/queue/doctor/:doctorId', queueController.getQueueStatus);
+router.get('/queue/analytics/:doctorId', queueController.getQueueAnalytics); // New Analytics Route
+router.put('/queue/token/status', queueController.updateTokenStatus);
+router.get('/queue/patient/:patientId', queueController.getPatientToken);
+
 
 export default router;

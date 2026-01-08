@@ -13,22 +13,30 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const MOCK_OTPS: Record<string, string> = {};
 
 const MockAPI = {
-    requestOtp: async (phone: string, isRegistration: boolean): Promise<{ success: boolean; message: string }> => {
+    requestOtp: async (phone: string, isRegistration: boolean, email?: string): Promise<{ success: boolean; message: string }> => {
         await delay(1000);
-        const userExists = USERS.some(u => u.phone === phone);
 
-        if (isRegistration && userExists) {
+        if (isRegistration && USERS.some(u => u.phone === phone)) {
             throw new Error('This phone number is already registered.');
         }
-        if (!isRegistration && !userExists) {
+
+        if (!isRegistration && !USERS.some(u => u.phone === phone)) {
             throw new Error('Phone number not found. Please register.');
         }
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         MOCK_OTPS[phone] = otp;
         console.log(`[DEV MODE] OTP for ${phone}: ${otp}`);
-        alert(`[DEV MODE] Your verification code is: ${otp}`);
+
         return { success: true, message: 'OTP sent successfully' };
+    },
+    forgotPassword: async (identifier: string) => {
+        await delay(500);
+        return { success: true, message: 'Mock reset code sent' };
+    },
+    resetPassword: async (identifier: string, otp: string, newPassword: string) => {
+        await delay(500);
+        return { success: true, message: 'Mock password reset successful' };
     },
     verifyOtp: async (phone: string, otp: string, userData?: Partial<User>): Promise<User> => {
         await delay(1000);
@@ -158,30 +166,152 @@ const MockAPI = {
         appointments: APPOINTMENTS.length
     })
 };
+// Real API Implementation
+const RealAPI = {
+    requestOtp: async (phone: string, isRegistration: boolean, email?: string) => {
+        const res = await fetch(`${API_URL}/auth/otp/request`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, email, isRegistration })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Error requesting OTP');
+        return data;
+    },
+    verifyOtp: async (phone: string, otp: string, userData?: Partial<User>) => {
+        const res = await fetch(`${API_URL}/auth/otp/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, otp, userData })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Error verifying OTP');
+        return data;
+    },
+    login: async (email: string, role: Role) => {
+        // Only used for context simulation in some parts, but real login uses verifyOtp or password
+        // Mapping this to password login if needed or just using it as a stub?
+        // The UI calls login() from AuthContext which updates local state. 
+        // AuthContext.login calls api.login usually? No, AuthContext calls api.login
 
-export const requestOtpAPI = MockAPI.requestOtp;
-export const verifyOtpAPI = MockAPI.verifyOtp;
-export const loginAPI = MockAPI.login;
-export const loginWithPasswordAPI = MockAPI.loginWithPassword;
-export const registerAPI = MockAPI.register;
+        // Actually the 'login' function in api.ts was simulating 'email/role' only login. 
+        // Real authController.login uses email/password. 
+        // We'll map this to the real login endpoint if password is provided, but the signature here is just email/role.
+        // This signature `login(email, role)` is legacy from the Mock. 
+        // We should rely on `loginWithPassword` for real auth.
+        return MockAPI.login(email, role);
+    },
+    loginWithPassword: async (identifier: string, password: string) => {
+        const res = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: identifier, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Login failed');
+        return data;
+    },
+    register: async (data: Partial<User> & { password?: string }) => {
+        // Restructure data to match backend expectation: { phone, userData, password }
+        const { phone, password, ...userData } = data;
 
-export const getDoctorsAPI = MockAPI.getDoctors;
-export const createDoctorAPI = MockAPI.createDoctor;
+        const res = await fetch(`${API_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, password, userData })
+        });
+        const responseData = await res.json();
+        if (!res.ok) throw new Error(responseData.message || 'Registration failed');
+        return responseData;
+    },
+    forgotPassword: async (identifier: string) => {
+        const res = await fetch(`${API_URL}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to send reset code');
+        return data;
+    },
+    resetPassword: async (identifier: string, otp: string, newPassword: string) => {
+        const res = await fetch(`${API_URL}/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier, otp, newPassword })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to reset password');
+        return data;
+    },
+    getDoctors: async () => {
+        const res = await fetch(`${API_URL}/users?role=DOCTOR`);
+        const data = await res.json();
+        return data.map((u: any) => ({ ...u, id: u._id || u.id }));
+    },
+    updatePatient: async (id: string, data: Partial<User>) => {
+        const res = await fetch(`${API_URL}/users/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error('Failed to update patient');
+        return res.json();
+    },
+    // ... we can implement others as needed, falling back to Mock for now
+    getAppointments: async (userId: string, role: Role) => {
+        const res = await fetch(`${API_URL}/appointments?userId=${userId}&role=${role}`);
+        const data = await res.json();
+        return data.map((a: any) => ({ ...a, id: a._id || a.id }));
+    },
+    createAppointment: async (appt: any) => {
+        const res = await fetch(`${API_URL}/appointments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(appt)
+        });
+        return res.json();
+    },
+    getMedicalReports: async (userId: string) => {
+        const res = await fetch(`${API_URL}/reports?userId=${userId}`);
+        return res.json();
+    },
+    getVaccines: async () => {
+        const res = await fetch(`${API_URL}/vaccines`);
+        return res.json();
+    },
+};
+
+// Toggle this to switch between Mock and Real
+const USE_REAL_API = true;
+
+const SelectedAPI = USE_REAL_API ? { ...MockAPI, ...RealAPI } : MockAPI;
+
+export const requestOtpAPI = SelectedAPI.requestOtp;
+export const verifyOtpAPI = SelectedAPI.verifyOtp;
+export const loginAPI = SelectedAPI.login;
+export const loginWithPasswordAPI = SelectedAPI.loginWithPassword;
+export const forgotPasswordAPI = SelectedAPI.forgotPassword;
+export const resetPasswordAPI = SelectedAPI.resetPassword;
+export const registerAPI = SelectedAPI.register;
+
+export const getDoctorsAPI = SelectedAPI.getDoctors;
+export const createDoctorAPI = MockAPI.createDoctor; // Keep mock for admin functions not fully implemented
 export const deleteDoctorAPI = MockAPI.deleteDoctor;
 
 export const getPatientsAPI = MockAPI.getPatients;
 export const createPatientAPI = MockAPI.createPatient;
-export const updatePatientAPI = MockAPI.updatePatient;
+export const updatePatientAPI = SelectedAPI.updatePatient;
 export const deletePatientAPI = MockAPI.deletePatient;
 
-export const getAppointmentsAPI = MockAPI.getAppointments;
-export const createAppointmentAPI = MockAPI.createAppointment;
+export const getAppointmentsAPI = SelectedAPI.getAppointments;
+export const createAppointmentAPI = SelectedAPI.createAppointment;
 export const updateAppointmentStatusAPI = MockAPI.updateAppointmentStatus;
 
-export const getVaccinesAPI = MockAPI.getVaccines;
+export const getVaccinesAPI = SelectedAPI.getVaccines;
 export const addVaccineAPI = MockAPI.addVaccine;
 export const deleteVaccineAPI = MockAPI.deleteVaccine;
 
-export const getMedicalReportsAPI = MockAPI.getMedicalReports;
+export const getMedicalReportsAPI = SelectedAPI.getMedicalReports;
 export const getNotificationsAPI = MockAPI.getNotifications;
 export const getStatsAPI = MockAPI.getStats;

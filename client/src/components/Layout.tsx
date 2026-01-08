@@ -36,12 +36,14 @@ export const DashboardLayout = ({ children }: { children: React.ReactNode }) => 
       case Role.DOCTOR:
         return [
           { icon: Activity, label: 'Dashboard', path: '/doctor' },
+          { icon: Users, label: 'Queue Management', path: '/doctor/queue' },
           { icon: Calendar, label: 'Schedule', path: '/doctor/schedule' },
           { icon: UserCircle, label: 'Profile', path: '/doctor/profile' },
         ];
       case Role.PATIENT:
         return [
           { icon: Home, label: 'Dashboard', path: '/patient' },
+          { icon: Activity, label: 'Live Queue', path: '/patient/queue' },
           { icon: Calendar, label: 'My Appointments', path: '/patient/appointments' },
           { icon: Stethoscope, label: 'Book Appointment', path: '/patient/book' },
           { icon: UserCircle, label: 'Medical Profile', path: '/patient/profile' },
@@ -167,10 +169,16 @@ export const PublicLayout = ({ children }: { children: React.ReactNode }) => {
                 </Link>
               ) : (
                 <>
-                  <Link to="/login" className="text-slate-600 hover:text-primary-600 font-semibold text-sm">Patient Portal</Link>
-                  <Link to="/register" className="bg-gradient-to-r from-primary-600 to-secondary-500 text-white px-6 py-2.5 rounded-full hover:shadow-lg hover:shadow-primary-500/30 transition-all font-bold text-sm">
-                    Book Appointment
+                  <Link to="/login" className="text-slate-600 hover:text-primary-600 font-semibold text-sm flex items-center gap-1">
+                    <LogOut size={16} className="rotate-180" />
+                    Login / Sign Up
                   </Link>
+                  <button
+                    onClick={() => window.location.href = '/login?redirect=/patient/book'}
+                    className="bg-gradient-to-r from-primary-600 to-secondary-500 text-white px-6 py-2.5 rounded-full hover:shadow-lg hover:shadow-primary-500/30 transition-all font-bold text-sm"
+                  >
+                    Book Appointment
+                  </button>
                 </>
               )}
             </div>

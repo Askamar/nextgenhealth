@@ -1,21 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { 
-    getAppointmentsAPI, 
-    getDoctorsAPI, 
-    createAppointmentAPI, 
-    DEPARTMENTS, 
-    getMedicalReportsAPI, 
+import {
+    getAppointmentsAPI,
+    getDoctorsAPI,
+    createAppointmentAPI,
+    DEPARTMENTS,
+    getMedicalReportsAPI,
     getNotificationsAPI,
     updatePatientAPI
 } from '../../services/api';
 import { Appointment, User, AppointmentStatus, MedicalReport, Notification } from '../../types';
 import { Card, Button, Badge } from '../../components/Components';
-import { 
-    Calendar, Clock, MapPin, ChevronRight, Bell, FileText, 
-    Syringe, Download, CheckCircle, User as UserIcon, Mail, 
-    Droplets, Scale, Ruler, Edit3, Save, X, Activity 
+import {
+    Calendar, Clock, MapPin, ChevronRight, Bell, FileText,
+    Syringe, Download, CheckCircle, User as UserIcon, Mail,
+    Droplets, Scale, Ruler, Edit3, Save, X, Activity
 } from 'lucide-react';
 
 export const PatientDashboard = () => {
@@ -70,7 +70,7 @@ export const PatientDashboard = () => {
 
                 <div className="space-y-8">
                     <Card className="p-6">
-                         <div className="flex justify-between items-center mb-6"><h3 className="font-bold text-slate-900">Notifications</h3><span className="text-xs font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{notifications.filter(n => !n.read).length} New</span></div>
+                        <div className="flex justify-between items-center mb-6"><h3 className="font-bold text-slate-900">Notifications</h3><span className="text-xs font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{notifications.filter(n => !n.read).length} New</span></div>
                         <div className="space-y-4">
                             {notifications.map(not => (
                                 <div key={not.id} className="flex gap-3 items-start pb-4 border-b border-gray-100 last:border-0 last:pb-0">
@@ -131,7 +131,24 @@ export const BookAppointment = () => {
                 {step === 3 && (
                     <div className="grid md:grid-cols-2 gap-8">
                         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm"><h3 className="font-bold text-lg mb-4">Select Date</h3><input type="date" className="w-full p-3 border rounded-lg mb-4" onChange={(e) => setDate(e.target.value)} /><h3 className="font-bold text-lg mb-4">Select Time</h3><div className="grid grid-cols-3 gap-3">{['09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '04:00 PM'].map(t => (<button key={t} onClick={() => setTime(t)} className={`py-2 px-1 text-sm rounded-lg border ${time === t ? 'bg-secondary-500 text-white border-secondary-500' : 'border-gray-200 hover:border-secondary-300'}`}>{t}</button>))}</div></div>
-                        <div className="bg-slate-50 p-6 rounded-2xl border border-gray-200"><h3 className="font-bold text-lg mb-6">Appointment Summary</h3><div className="space-y-4"><div className="flex items-center gap-4"><img src={selectedDoctor?.avatar} className="w-12 h-12 rounded-full" alt="" /><div><p className="font-bold text-slate-900">{selectedDoctor?.name}</p><p className="text-sm text-slate-500">{selectedDoctor?.doctorDetails.specialization}</p></div></div><div className="h-px bg-gray-200 my-4"></div><div className="flex justify-between text-sm"><span className="text-slate-500">Date</span><span className="font-semibold text-slate-800">{date}</span></div><div className="flex justify-between text-sm"><span className="text-slate-500">Time</span><span className="font-semibold text-slate-800">{time}</span></div></div><Button className="w-full mt-8" onClick={() => { if(selectedDoctor && user) { createAppointmentAPI({ patientId: user.id, patientName: user.name, doctorId: selectedDoctor.id, doctorName: selectedDoctor.name, department: department, date: date, time: time, }).then(() => window.location.href = '#/patient'); } }}>Confirm Appointment</Button></div>
+                        <div className="bg-slate-50 p-6 rounded-2xl border border-gray-200"><h3 className="font-bold text-lg mb-6">Appointment Summary</h3><div className="space-y-4"><div className="flex items-center gap-4"><img src={selectedDoctor?.avatar} className="w-12 h-12 rounded-full" alt="" /><div><p className="font-bold text-slate-900">{selectedDoctor?.name}</p><p className="text-sm text-slate-500">{selectedDoctor?.doctorDetails.specialization}</p></div></div><div className="h-px bg-gray-200 my-4"></div><div className="flex justify-between text-sm"><span className="text-slate-500">Date</span><span className="font-semibold text-slate-800">{date}</span></div><div className="flex justify-between text-sm"><span className="text-slate-500">Time</span><span className="font-semibold text-slate-800">{time}</span></div></div><Button className="w-full mt-8" onClick={() => {
+                            if (selectedDoctor && user) {
+                                createAppointmentAPI({
+                                    patientId: user.id,
+                                    patientName: user.name,
+                                    doctorId: selectedDoctor.id,
+                                    doctorName: selectedDoctor.name,
+                                    department: department,
+                                    date: date,
+                                    time: time,
+                                })
+                                    .then(() => {
+                                        alert("Appointment Booked Successfully!");
+                                        window.location.href = '#/patient';
+                                    })
+                                    .catch(err => alert("Failed to book appointment: " + err.message));
+                            }
+                        }}>Confirm Appointment</Button></div>
                     </div>
                 )}
             </div>
@@ -142,7 +159,7 @@ export const BookAppointment = () => {
 export const MedicalReports = () => {
     const { user } = useAuth();
     const [reports, setReports] = useState<MedicalReport[]>([]);
-    useEffect(() => { if(user) getMedicalReportsAPI(user.id).then(setReports); }, [user]);
+    useEffect(() => { if (user) getMedicalReportsAPI(user.id).then(setReports); }, [user]);
     return (
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"><div><h1 className="text-3xl font-bold text-slate-900">My Medical Reports</h1><p className="text-slate-500 mt-1">Securely view, manage, and upload your health records.</p></div><Button className="bg-secondary-500 hover:bg-secondary-600 text-white"><Download size={18} /> Upload New Report</Button></div>
@@ -164,12 +181,22 @@ export const PatientProfile = () => {
     const [formData, setFormData] = useState({
         name: user?.name || '',
         email: user?.email || '',
+        phone: user?.phone || '',
+        // Address
+        address_street: user?.address?.street || '',
+        address_city: user?.address?.city || '',
+        address_state: user?.address?.state || '',
+        address_pincode: user?.address?.pincode || '',
+        // Patient Details
         dob: user?.patientDetails?.dob || '',
         bloodGroup: user?.patientDetails?.bloodGroup || '',
         gender: user?.patientDetails?.gender || 'Male',
         allergies: user?.patientDetails?.allergies || '',
         weight: user?.patientDetails?.weight || '',
-        height: user?.patientDetails?.height || ''
+        height: user?.patientDetails?.height || '',
+        // Gov ID
+        govId_type: user?.patientDetails?.govId?.type || '',
+        govId_number: user?.patientDetails?.govId?.number || ''
     });
 
     const handleSave = async () => {
@@ -178,6 +205,12 @@ export const PatientProfile = () => {
             await updatePatientAPI(user.id, {
                 name: formData.name,
                 email: formData.email,
+                address: {
+                    street: formData.address_street,
+                    city: formData.address_city,
+                    state: formData.address_state,
+                    pincode: formData.address_pincode
+                },
                 patientDetails: {
                     ...user.patientDetails,
                     dob: formData.dob,
@@ -185,12 +218,16 @@ export const PatientProfile = () => {
                     gender: formData.gender as any,
                     allergies: formData.allergies,
                     weight: formData.weight,
-                    height: formData.height
+                    height: formData.height,
+                    govId: formData.govId_type ? {
+                        type: formData.govId_type,
+                        number: formData.govId_number
+                    } : undefined
                 }
             });
             setIsEditing(false);
             // In a real app, we'd probably re-fetch user data or update context
-            alert("Profile updated successfully! (Note: In this demo, changes persist in memory only)");
+            alert("Profile updated successfully!");
         } catch (error) {
             alert("Failed to update profile");
         }
@@ -223,9 +260,9 @@ export const PatientProfile = () => {
                 {/* Profile Header Card */}
                 <Card className="md:col-span-1 p-8 text-center h-fit">
                     <div className="relative inline-block mb-6">
-                        <img 
-                            src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name}`} 
-                            alt={user?.name} 
+                        <img
+                            src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name}`}
+                            alt={user?.name}
                             className="w-32 h-32 rounded-full mx-auto border-4 border-slate-50 shadow-md object-cover"
                         />
                         {isEditing && (
@@ -251,6 +288,7 @@ export const PatientProfile = () => {
                 {/* Form Data */}
                 <div className="md:col-span-2 space-y-6">
                     {/* Personal Details */}
+                    {/* Personal Details */}
                     <Card className="p-8">
                         <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                             <UserIcon size={20} className="text-primary-500" /> Personal Information
@@ -259,10 +297,10 @@ export const PatientProfile = () => {
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase">Full Name</label>
                                 {isEditing ? (
-                                    <input 
+                                    <input
                                         className="w-full p-2.5 border rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                                         value={formData.name}
-                                        onChange={e => setFormData({...formData, name: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
                                     />
                                 ) : (
                                     <p className="font-medium text-slate-800 p-2.5 bg-slate-50 rounded-lg">{formData.name}</p>
@@ -271,13 +309,101 @@ export const PatientProfile = () => {
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase">Email Address</label>
                                 {isEditing ? (
-                                    <input 
+                                    <input
                                         className="w-full p-2.5 border rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                                         value={formData.email}
-                                        onChange={e => setFormData({...formData, email: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, email: e.target.value })}
                                     />
                                 ) : (
                                     <p className="font-medium text-slate-800 p-2.5 bg-slate-50 rounded-lg">{formData.email}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase">Phone Number</label>
+                                <p className="font-medium text-slate-800 p-2.5 bg-slate-50 rounded-lg">{formData.phone}</p>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase">Government ID</label>
+                                {isEditing ? (
+                                    <div className="flex gap-2">
+                                        <select
+                                            className="w-1/3 p-2.5 border rounded-lg bg-slate-50"
+                                            value={formData.govId_type}
+                                            onChange={e => setFormData({ ...formData, govId_type: e.target.value })}
+                                        >
+                                            <option value="">Type</option>
+                                            <option value="Aadhaar">Aadhaar</option>
+                                            <option value="PAN">PAN</option>
+                                            <option value="Passport">Passport</option>
+                                        </select>
+                                        <input
+                                            className="w-2/3 p-2.5 border rounded-lg bg-slate-50"
+                                            placeholder="ID Number"
+                                            value={formData.govId_number}
+                                            onChange={e => setFormData({ ...formData, govId_number: e.target.value })}
+                                        />
+                                    </div>
+                                ) : (
+                                    <p className="font-medium text-slate-800 p-2.5 bg-slate-50 rounded-lg">
+                                        {formData.govId_type ? `${formData.govId_type}: ${formData.govId_number}` : 'Not provided'}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* Address Details */}
+                    <Card className="p-8">
+                        <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                            <MapPin size={20} className="text-red-500" /> Address & Location
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div className="space-y-2 sm:col-span-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase">Street Address</label>
+                                {isEditing ? (
+                                    <input
+                                        className="w-full p-2.5 border rounded-lg bg-slate-50"
+                                        value={formData.address_street}
+                                        onChange={e => setFormData({ ...formData, address_street: e.target.value })}
+                                    />
+                                ) : (
+                                    <p className="font-medium text-slate-800 p-2.5 bg-slate-50 rounded-lg">{formData.address_street || 'N/A'}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase">City</label>
+                                {isEditing ? (
+                                    <input
+                                        className="w-full p-2.5 border rounded-lg bg-slate-50"
+                                        value={formData.address_city}
+                                        onChange={e => setFormData({ ...formData, address_city: e.target.value })}
+                                    />
+                                ) : (
+                                    <p className="font-medium text-slate-800 p-2.5 bg-slate-50 rounded-lg">{formData.address_city || 'N/A'}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase">State</label>
+                                {isEditing ? (
+                                    <input
+                                        className="w-full p-2.5 border rounded-lg bg-slate-50"
+                                        value={formData.address_state}
+                                        onChange={e => setFormData({ ...formData, address_state: e.target.value })}
+                                    />
+                                ) : (
+                                    <p className="font-medium text-slate-800 p-2.5 bg-slate-50 rounded-lg">{formData.address_state || 'N/A'}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase">Pincode</label>
+                                {isEditing ? (
+                                    <input
+                                        className="w-full p-2.5 border rounded-lg bg-slate-50"
+                                        value={formData.address_pincode}
+                                        onChange={e => setFormData({ ...formData, address_pincode: e.target.value })}
+                                    />
+                                ) : (
+                                    <p className="font-medium text-slate-800 p-2.5 bg-slate-50 rounded-lg">{formData.address_pincode || 'N/A'}</p>
                                 )}
                             </div>
                         </div>
@@ -294,11 +420,11 @@ export const PatientProfile = () => {
                                     <Calendar size={12} /> Date of Birth
                                 </label>
                                 {isEditing ? (
-                                    <input 
+                                    <input
                                         type="date"
                                         className="w-full p-2.5 border rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                                         value={formData.dob}
-                                        onChange={e => setFormData({...formData, dob: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, dob: e.target.value })}
                                     />
                                 ) : (
                                     <p className="font-medium text-slate-800 p-2.5 bg-slate-50 rounded-lg">{formData.dob || 'Not set'}</p>
@@ -307,10 +433,10 @@ export const PatientProfile = () => {
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase">Gender</label>
                                 {isEditing ? (
-                                    <select 
+                                    <select
                                         className="w-full p-2.5 border rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                                         value={formData.gender}
-                                        onChange={e => setFormData({...formData, gender: e.target.value as any})}
+                                        onChange={e => setFormData({ ...formData, gender: e.target.value as any })}
                                     >
                                         <option value="Male">Male</option>
                                         <option value="Female">Female</option>
@@ -323,15 +449,15 @@ export const PatientProfile = () => {
                         </div>
 
                         <div className="grid grid-cols-3 gap-4 mb-8">
-                             <div className="space-y-2">
+                            <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
                                     <Droplets size={12} className="text-red-500" /> Blood
                                 </label>
                                 {isEditing ? (
-                                    <select 
+                                    <select
                                         className="w-full p-2 border rounded-lg bg-slate-50"
                                         value={formData.bloodGroup}
-                                        onChange={e => setFormData({...formData, bloodGroup: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, bloodGroup: e.target.value })}
                                     >
                                         <option value="">--</option>
                                         {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => <option key={bg} value={bg}>{bg}</option>)}
@@ -345,11 +471,11 @@ export const PatientProfile = () => {
                                     <Scale size={12} className="text-blue-500" /> Weight
                                 </label>
                                 {isEditing ? (
-                                    <input 
+                                    <input
                                         placeholder="60 kg"
                                         className="w-full p-2 border rounded-lg bg-slate-50"
                                         value={formData.weight}
-                                        onChange={e => setFormData({...formData, weight: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, weight: e.target.value })}
                                     />
                                 ) : (
                                     <p className="font-bold text-slate-800 p-2 bg-slate-50 rounded-lg text-center">{formData.weight || '--'}</p>
@@ -360,11 +486,11 @@ export const PatientProfile = () => {
                                     <Ruler size={12} className="text-green-500" /> Height
                                 </label>
                                 {isEditing ? (
-                                    <input 
+                                    <input
                                         placeholder="170 cm"
                                         className="w-full p-2 border rounded-lg bg-slate-50"
                                         value={formData.height}
-                                        onChange={e => setFormData({...formData, height: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, height: e.target.value })}
                                     />
                                 ) : (
                                     <p className="font-bold text-slate-800 p-2 bg-slate-50 rounded-lg text-center">{formData.height || '--'}</p>
@@ -375,12 +501,12 @@ export const PatientProfile = () => {
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-400 uppercase">Known Allergies</label>
                             {isEditing ? (
-                                <textarea 
+                                <textarea
                                     rows={3}
                                     placeholder="e.g. Peanuts, Penicillin, Dust..."
                                     className="w-full p-4 border rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all resize-none"
                                     value={formData.allergies}
-                                    onChange={e => setFormData({...formData, allergies: e.target.value})}
+                                    onChange={e => setFormData({ ...formData, allergies: e.target.value })}
                                 />
                             ) : (
                                 <div className={`p-4 rounded-xl border-l-4 ${formData.allergies ? 'bg-red-50 border-red-500 text-red-700' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>

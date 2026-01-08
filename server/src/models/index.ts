@@ -9,15 +9,30 @@ const userSchema = new mongoose.Schema({
   password: { type: String }, // Optional for patients (using OTP)
   role: { type: String, enum: ['PATIENT', 'DOCTOR', 'ADMIN'], default: 'PATIENT' },
   avatar: String,
+
+  // Common Fields
+  address: {
+    street: String,
+    city: String,
+    state: String,
+    pincode: String
+  },
+
   // Patient Specific Fields
   patientDetails: {
+    patientId: { type: String, unique: true, sparse: true },
     dob: String,
+    age: Number,
     bloodGroup: String,
     gender: { type: String, enum: ['Male', 'Female', 'Other'] },
     allergies: String,
     weight: String,
     height: String,
-    lastVisit: Date
+    lastVisit: Date,
+    govId: {
+      type: { type: String, enum: ['Aadhaar', 'PAN', 'Passport', 'Other'] },
+      number: String
+    }
   },
   // Doctor Specific Fields
   doctorDetails: {
@@ -26,7 +41,8 @@ const userSchema = new mongoose.Schema({
     experience: Number,
     availability: [String],
     rating: Number,
-    patients: Number
+    patients: Number,
+    avgConsultationTime: { type: Number, default: 15 } // Minutes
   }
 }, { timestamps: true });
 
@@ -53,10 +69,10 @@ const appointmentSchema = new mongoose.Schema({
   department: String,
   date: String,
   time: String,
-  status: { 
-    type: String, 
-    enum: ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'], 
-    default: 'PENDING' 
+  status: {
+    type: String,
+    enum: ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'],
+    default: 'PENDING'
   },
   type: { type: String, default: 'In-Person' },
   notes: String
@@ -87,3 +103,22 @@ const medicalReportSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 export const MedicalReport = mongoose.model('MedicalReport', medicalReportSchema);
+
+// --- TOKEN/QUEUE SCHEMA ---
+const tokenSchema = new mongoose.Schema({
+  patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  patientName: String,
+  doctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  tokenNumber: { type: Number, required: true },
+  status: {
+    type: String,
+    enum: ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED'],
+    default: 'PENDING'
+  },
+  type: { type: String, enum: ['REGULAR', 'EMERGENCY'], default: 'REGULAR' },
+  estimatedTime: Date, // Predicted time when their turn comes
+  startTime: Date,
+  endTime: Date
+}, { timestamps: true });
+
+export const Token = mongoose.model('Token', tokenSchema);
