@@ -122,3 +122,29 @@ const tokenSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 export const Token = mongoose.model('Token', tokenSchema);
+
+// --- DRUG SCHEMA ---
+const drugSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  description: String,
+  category: String,
+  dosageTiming: String, // e.g. "Take 30 mins before meal"
+  minDose: String,      // e.g. "200mg"
+  maxDose: String,      // e.g. "4000mg per day"
+  sideEffects: String   // e.g. "Drowziness, Nausea"
+}, { timestamps: true });
+
+export const Drug = mongoose.model('Drug', drugSchema);
+
+// --- DRUG INTERACTION SCHEMA ---
+const drugInteractionSchema = new mongoose.Schema({
+  drugs: [{ type: String, required: true }], // Array of 2 drug names (lowercase)
+  severity: { type: String, enum: ['Mild', 'Moderate', 'Severe'], required: true },
+  description: { type: String, required: true },
+  management: String // Recommendation on what to do
+}, { timestamps: true });
+
+// Ensure we don't duplicate interactions for the same pair
+drugInteractionSchema.index({ drugs: 1 });
+
+export const DrugInteraction = mongoose.model('DrugInteraction', drugInteractionSchema);

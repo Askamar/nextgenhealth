@@ -113,3 +113,21 @@ export interface Token {
   endTime?: string;
   createdAt: string;
 }
+
+export interface Drug {
+  _id?: string;
+  name: string;
+  category?: string;
+  description?: string;
+  dosageTiming?: string;
+  minDose?: string;
+  maxDose?: string;
+  sideEffects?: string;
+}
+
+export interface DrugInteraction {
+  drugs: string[];
+  severity: 'Mild' | 'Moderate' | 'Severe';
+  description: string;
+  management?: string;
+}

@@ -1,5 +1,5 @@
 
-import { User, Role, Appointment, AppointmentStatus, MedicalReport, Notification, Vaccine } from '../types';
+import { User, Role, Appointment, AppointmentStatus, MedicalReport, Notification, Vaccine, Drug, DrugInteraction } from '../types';
 import { USERS, APPOINTMENTS, DEPARTMENTS, REPORTS, NOTIFICATIONS, VACCINES } from './mockData';
 
 export { DEPARTMENTS };
@@ -164,7 +164,53 @@ const MockAPI = {
         doctors: USERS.filter(u => u.role === Role.DOCTOR).length,
         patients: USERS.filter(u => u.role === Role.PATIENT).length,
         appointments: APPOINTMENTS.length
-    })
+    }),
+    searchDrugs: async (query: string) => {
+        await delay(300);
+        const allDrugs = [
+            {
+                name: 'Aspirin',
+                category: 'Analgesic',
+                dosageTiming: 'Take with food or milk',
+                minDose: '300mg',
+                maxDose: '4000mg/day',
+                sideEffects: 'Stomach pain'
+            },
+            {
+                name: 'Warfarin',
+                category: 'Anticoagulant',
+                dosageTiming: 'Take at same time daily',
+                minDose: '2mg',
+                maxDose: '10mg/day',
+                sideEffects: 'Bleeding'
+            },
+            { name: 'Ibuprofen', category: 'NSAID', dosageTiming: 'With food', minDose: '200mg', maxDose: '3200mg/day' },
+            { name: 'Paracetamol', category: 'Analgesic', dosageTiming: 'Any time', minDose: '500mg', maxDose: '4000mg/day' },
+            { name: 'Amoxicillin', category: 'Antibiotic' },
+            { name: 'Alcohol', category: 'Substance' }
+        ];
+        return allDrugs.filter(d => d.name.toLowerCase().includes(query.toLowerCase()));
+    },
+    checkInteractions: async (drugs: string[]) => {
+        await delay(500);
+        // Simple mock returning an interaction if 'Aspirin' and 'Warfarin' are present
+        const interactions = [];
+        const lower = drugs.map(d => d.toLowerCase());
+        if (lower.includes('aspirin') && lower.includes('warfarin')) {
+            interactions.push({
+                drugs: ['aspirin', 'warfarin'],
+                severity: 'Severe',
+                description: 'Increased bleeding risk.',
+                management: 'Avoid combination.'
+            });
+        }
+        return { interactions };
+    },
+    getDrugInfo: async (name: string) => {
+        await delay(300);
+        // Minimal mock
+        return { name, category: 'Mock Category', description: 'Mock Description via AI Fallback' };
+    }
 };
 // Real API Implementation
 const RealAPI = {
@@ -280,6 +326,36 @@ const RealAPI = {
         const res = await fetch(`${API_URL}/vaccines`);
         return res.json();
     },
+    searchDrugs: async (query: string): Promise<Drug[]> => {
+        try {
+            const res = await fetch(`${API_URL}/drugs/search?query=${encodeURIComponent(query)}`);
+            if (!res.ok) return [];
+            return res.json();
+        } catch (e) {
+            console.error(e);
+            return [];
+        }
+    },
+    getDrugInfo: async (name: string): Promise<Drug | null> => {
+        try {
+            const res = await fetch(`${API_URL}/drugs/info?name=${encodeURIComponent(name)}`);
+            if (!res.ok) return null;
+            return res.json();
+        } catch (e) {
+            console.error(e);
+            return null;
+        }
+    },
+    checkInteractions: async (drugs: string[]): Promise<{ interactions: DrugInteraction[] }> => {
+        // Backend now uses AI to check interactions
+        const res = await fetch(`${API_URL}/drugs/check`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ drugs })
+        });
+        if (!res.ok) throw new Error('Failed to check interactions');
+        return res.json();
+    },
 };
 
 // Toggle this to switch between Mock and Real
@@ -315,3 +391,7 @@ export const deleteVaccineAPI = MockAPI.deleteVaccine;
 export const getMedicalReportsAPI = SelectedAPI.getMedicalReports;
 export const getNotificationsAPI = MockAPI.getNotifications;
 export const getStatsAPI = MockAPI.getStats;
+
+export const searchDrugsAPI = SelectedAPI.searchDrugs;
+export const getDrugInfoAPI = SelectedAPI.getDrugInfo;
+export const checkInteractionsAPI = SelectedAPI.checkInteractions;

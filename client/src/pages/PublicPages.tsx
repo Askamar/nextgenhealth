@@ -9,9 +9,12 @@ import {
     Stethoscope, Activity, FlaskConical,
     ArrowRight, Phone, ShieldCheck,
     Smartphone, Loader2, Users, Calendar, Clock,
-    Mail, Key, Lock, Fingerprint
+    Mail, Key, Lock, Fingerprint, Eye, EyeOff
 } from 'lucide-react';
+
 import heroBg from '../assets/hero_bg.png';
+import { DrugInteractionChecker } from '../components/DrugInteractionChecker';
+import { useToast } from '../context/ToastContext';
 
 const AuthCardHeader = ({ title, subtitle }: { title: string; subtitle: string }) => (
     <div className="p-8 text-center bg-white border-b border-slate-50">
@@ -67,6 +70,7 @@ const OtpInputGroup = ({ value, onChange }: { value: string; onChange: (val: str
 export const Login = () => {
     const { login, loginWithPassword, user } = useAuth();
     const navigate = useNavigate();
+    const toast = useToast();
 
     const getDashboardPath = (role: Role) => {
         switch (role) {
@@ -94,6 +98,7 @@ export const Login = () => {
     // Password State
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -134,16 +139,18 @@ export const Login = () => {
         setLoading(true);
         try {
             const user = await loginWithPassword(identifier, password);
+            toast.success('Welcome back!', `Logged in as ${user.name}`);
             navigate(getDashboardPath(user.role));
         } catch (err: any) {
             setError(err.message);
+            toast.error('Login Failed', err.message || 'Please check your credentials');
         } finally {
             setLoading(false);
         }
     };
 
     const handlePasskeyLogin = () => {
-        alert("Passkey login flow initiated...");
+        toast.info('Passkey Login', 'Passkey authentication initiated...');
         // In real implementation:
         // navigator.credentials.get({ publicKey: ... })
     };
@@ -205,13 +212,20 @@ export const Login = () => {
                                             <Lock size={18} />
                                         </div>
                                         <input
-                                            type="password"
-                                            className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-100 focus:border-secondary-500 focus:ring-4 focus:ring-secondary-500/10 outline-none transition-all bg-slate-50 font-medium"
+                                            type={showPassword ? "text" : "password"}
+                                            className="w-full pl-12 pr-12 py-4 rounded-xl border-2 border-slate-100 focus:border-secondary-500 focus:ring-4 focus:ring-secondary-500/10 outline-none transition-all bg-slate-50 font-medium"
                                             placeholder="••••••••"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             required
                                         />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
                                     </div>
                                     <div className="text-right mt-2">
                                         <button
@@ -730,6 +744,25 @@ export const Home = () => {
                 </div>
             </section>
 
+            {/* Drug Interaction Checker Section */}
+            <section className="py-20 bg-slate-50 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-full bg-grid-slate-200/[0.04] mask-image-gradient-b"></div>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                    <div className="text-center max-w-3xl mx-auto mb-12">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-bold text-sm mb-6 border border-blue-100">
+                            <ShieldCheck size={16} />
+                            <span>Patient Safety First</span>
+                        </div>
+                        <h2 className="text-3xl md:text-5xl font-bold text-slate-900 mb-6">Check Your Medicine Interactions</h2>
+                        <p className="text-lg text-slate-600 leading-relaxed">
+                            Stay safe by checking if your medicines interact with each other. Our smart system helps you avoid harmful combinations.
+                        </p>
+                    </div>
+
+                    <DrugInteractionChecker />
+                </div>
+            </section>
+
             {/* Stats Section */}
             <section className="py-20 bg-white">
                 <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -807,7 +840,7 @@ export const Home = () => {
                     </div>
                 </div>
             </section>
-        </div>
+        </div >
     );
 };
 export const ForgotPassword = () => {

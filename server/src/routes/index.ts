@@ -92,5 +92,13 @@ router.get('/queue/analytics/:doctorId', queueController.getQueueAnalytics); // 
 router.put('/queue/token/status', queueController.updateTokenStatus);
 router.get('/queue/patient/:patientId', queueController.getPatientToken);
 
+// --- DRUGS ---
+import drugRoutes from './drugRoutes';
+router.use('/drugs', drugRoutes);
+
+// --- DSA POWERED FEATURES ---
+import dsaRoutes from './dsaRoutes';
+router.use('/dsa', dsaRoutes);
+
 
 export default router;

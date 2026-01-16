@@ -2,18 +2,102 @@
 import { Request, Response } from 'express';
 import { Token, User } from '../models';
 
+// Emergency Criteria - keywords that qualify for emergency
+const EMERGENCY_KEYWORDS = [
+    'chest pain', 'heart attack', 'difficulty breathing', 'shortness of breath',
+    'severe bleeding', 'unconscious', 'stroke', 'seizure', 'accident', 'trauma',
+    'poisoning', 'allergic reaction', 'severe pain', 'fracture', 'broken bone',
+    'high fever', 'labor', 'pregnancy emergency', 'diabetic emergency', 'cardiac'
+];
+
+// Function to validate emergency criteria
+const validateEmergency = (reason: string): { valid: boolean; matchedCriteria: string[] } => {
+    if (!reason || reason.trim().length < 10) {
+        return { valid: false, matchedCriteria: [] };
+    }
+
+    const lowerReason = reason.toLowerCase();
+    const matchedCriteria = EMERGENCY_KEYWORDS.filter(keyword =>
+        lowerReason.includes(keyword)
+    );
+
+    return {
+        valid: matchedCriteria.length > 0,
+        matchedCriteria
+    };
+};
+
 export const registerToken = async (req: Request, res: Response) => {
     try {
-        const { patientId, doctorId, type } = req.body;
+        const { patientId, doctorId, type, emergencyReason } = req.body;
 
         const doctor = await User.findById(doctorId);
         if (!doctor || doctor.role !== 'DOCTOR') {
             return res.status(404).json({ message: 'Doctor not found' });
         }
 
-        // specific doctor logic
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+
+        // ===== TOKEN LIMIT CHECK =====
+        // Calculate max tokens based on working hours (assume 8 hours) and avg consultation time
+        const avgTime = doctor.doctorDetails?.avgConsultationTime || 15;
+        const workingMinutes = 8 * 60; // 8 hours
+        const maxDailyTokens = Math.floor(workingMinutes / avgTime);
+
+        // Count today's tokens for this doctor
+        const todayTokenCount = await Token.countDocuments({
+            doctorId,
+            createdAt: { $gte: today }
+        });
+
+        if (todayTokenCount >= maxDailyTokens) {
+            return res.status(400).json({
+                message: `Doctor's queue is full for today. Maximum ${maxDailyTokens} patients can be seen.`,
+                maxTokens: maxDailyTokens,
+                currentTokens: todayTokenCount
+            });
+        }
+
+        // ===== CHECK IF PATIENT ALREADY HAS A TOKEN =====
+        const existingToken = await Token.findOne({
+            patientId,
+            doctorId,
+            status: { $in: ['PENDING', 'ACTIVE'] },
+            createdAt: { $gte: today }
+        });
+
+        if (existingToken) {
+            return res.status(400).json({
+                message: 'You already have an active token for this doctor today.',
+                existingToken
+            });
+        }
+
+        // ===== EMERGENCY VALIDATION =====
+        let tokenType = 'REGULAR';
+
+        if (type === 'EMERGENCY') {
+            if (!emergencyReason) {
+                return res.status(400).json({
+                    message: 'Emergency cases require a reason. Please describe your emergency.',
+                    requiresReason: true
+                });
+            }
+
+            const validation = validateEmergency(emergencyReason);
+
+            if (!validation.valid) {
+                return res.status(400).json({
+                    message: 'Your description does not meet emergency criteria. For true emergencies, please call 108 or visit the emergency ward directly.',
+                    isEmergencyValid: false,
+                    hint: 'Emergency cases include: chest pain, severe bleeding, difficulty breathing, accidents, unconscious patients, etc.'
+                });
+            }
+
+            tokenType = 'EMERGENCY';
+            console.log(`[EMERGENCY] Patient ${patientId} approved. Matched: ${validation.matchedCriteria.join(', ')}`);
+        }
 
         // Find pending tokens for today to calculate position
         const pendingTokens = await Token.countDocuments({
@@ -30,18 +114,20 @@ export const registerToken = async (req: Request, res: Response) => {
 
         const newTokenNumber = lastToken ? lastToken.tokenNumber + 1 : 1;
 
-        // Estimate time
-        const avgTime = doctor.doctorDetails?.avgConsultationTime || 15;
-        const estWaitMinutes = pendingTokens * avgTime;
+        // Estimate time (Emergency gets priority - add to front)
+        const estWaitMinutes = tokenType === 'EMERGENCY'
+            ? Math.min(pendingTokens * avgTime * 0.3, 15) // Max 15 min wait for emergency
+            : pendingTokens * avgTime;
         const estimatedTime = new Date(Date.now() + estWaitMinutes * 60000);
 
         const newToken = new Token({
             patientId,
-            patientName: req.body.patientName || 'Unknown', // Should ideally fetch from Patient ID check
+            patientName: req.body.patientName || 'Unknown',
             doctorId,
             tokenNumber: newTokenNumber,
             status: 'PENDING',
-            type: type || 'REGULAR',
+            type: tokenType,
+            emergencyReason: tokenType === 'EMERGENCY' ? emergencyReason : undefined,
             estimatedTime
         });
 
@@ -50,8 +136,12 @@ export const registerToken = async (req: Request, res: Response) => {
         res.status(201).json({
             success: true,
             token: newToken,
-            waitMinutes: estWaitMinutes,
-            message: 'Token registered successfully'
+            waitMinutes: Math.round(estWaitMinutes),
+            queuePosition: pendingTokens + 1,
+            remainingSlots: maxDailyTokens - todayTokenCount - 1,
+            message: tokenType === 'EMERGENCY'
+                ? 'Emergency token registered. You will be prioritized.'
+                : 'Token registered successfully'
         });
 
     } catch (error) {

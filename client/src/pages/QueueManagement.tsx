@@ -1,25 +1,105 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { getDoctorsAPI } from '../services/api';
-import { registerToken, getQueueStatus, updateTokenStatus, getPatientToken, getQueueAnalytics } from '../services/queueService';
+import { registerToken, getQueueStatus, updateTokenStatus, getPatientToken, getQueueAnalytics, RegisterTokenError } from '../services/queueService';
 import { Role, User, Token } from '../types';
+import { AlertTriangle, X } from 'lucide-react';
+
+// Emergency Modal Component
+const EmergencyModal = ({
+    isOpen,
+    onClose,
+    onSubmit,
+    loading
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    onSubmit: (reason: string) => void;
+    loading: boolean;
+}) => {
+    const [reason, setReason] = useState('');
+    const [error, setError] = useState('');
+
+    if (!isOpen) return null;
+
+    const handleSubmit = () => {
+        if (reason.trim().length < 10) {
+            setError('Please provide a detailed description (at least 10 characters)');
+            return;
+        }
+        onSubmit(reason);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 rounded-2xl max-w-md w-full p-6 border border-slate-700">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
+                        <AlertTriangle className="text-red-500" size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-white">Emergency Registration</h3>
+                        <p className="text-sm text-slate-400">Describe your emergency condition</p>
+                    </div>
+                    <button onClick={onClose} className="ml-auto text-slate-400 hover:text-white">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-4">
+                    <p className="text-sm text-red-400">
+                        <strong>Emergency cases include:</strong> Chest pain, difficulty breathing, severe bleeding,
+                        accidents, unconscious patients, seizures, stroke symptoms, high fever, allergic reactions, fractures.
+                    </p>
+                </div>
+
+                <textarea
+                    value={reason}
+                    onChange={(e) => { setReason(e.target.value); setError(''); }}
+                    placeholder="Describe your emergency condition in detail..."
+                    rows={4}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-white placeholder-slate-500 focus:ring-2 focus:ring-red-500 outline-none resize-none mb-2"
+                />
+                {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+
+                <div className="flex gap-3">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold transition-colors disabled:opacity-50"
+                    >
+                        {loading ? 'Submitting...' : 'Submit Emergency'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export const QueueManagement = () => {
     const { user } = useAuth();
+    const toast = useToast();
     const [doctors, setDoctors] = useState<User[]>([]);
     const [selectedDoctor, setSelectedDoctor] = useState<string>('');
     const [doctorQueue, setDoctorQueue] = useState<{ activeToken: Token | null, queue: Token[], totalWaiting: number } | null>(null);
     const [myTokens, setMyTokens] = useState<Token[]>([]);
     const [loading, setLoading] = useState(false);
+    const [showEmergencyModal, setShowEmergencyModal] = useState(false);
 
     useEffect(() => {
         if (user?.role === Role.PATIENT) {
             loadDoctors();
             loadMyTokens();
         } else if (user?.role === Role.DOCTOR) {
-            loadDoctorQueue(user.id); // Assuming user.id is the doctor's ID
-            // Poll for updates every 30s
+            loadDoctorQueue(user.id);
             const interval = setInterval(() => loadDoctorQueue(user.id), 30000);
             return () => clearInterval(interval);
         }
@@ -39,18 +119,6 @@ export const QueueManagement = () => {
             try {
                 const tokens = await getPatientToken(user.id);
                 setMyTokens(tokens);
-
-                // Simple check for notifications
-                tokens.forEach(token => {
-                    if (token.status === 'PENDING' && token.estimatedTime) {
-                        const waitTime = new Date(token.estimatedTime).getTime() - new Date().getTime();
-                        if (waitTime > 0 && waitTime < 15 * 60000) { // Less than 15 minutes
-                            // In a real app, use toast/push here.
-                            console.log(`Notification: Your turn for token #${token.tokenNumber} is coming up soon!`);
-                        }
-                    }
-                });
-
             } catch (e) { console.error(e); }
         }
     };
@@ -62,19 +130,46 @@ export const QueueManagement = () => {
         } catch (e) { console.error(e); }
     };
 
-    const handleJoinQueue = async (isEmergency: boolean = false) => {
+    const handleJoinQueue = async (isEmergency: boolean = false, emergencyReason?: string) => {
         if (!selectedDoctor || !user) return;
         setLoading(true);
         try {
-            await registerToken(user.id, selectedDoctor, user.name, isEmergency ? 'EMERGENCY' : 'REGULAR');
-            alert('Joined queue successfully!');
+            const result = await registerToken(
+                user.id,
+                selectedDoctor,
+                user.name,
+                isEmergency ? 'EMERGENCY' : 'REGULAR',
+                emergencyReason
+            );
+
+            toast.success(
+                isEmergency ? 'Emergency Token Registered!' : 'Token Registered!',
+                `Token #${result.token.tokenNumber} - Wait: ~${result.waitMinutes} min`
+            );
+
+            setShowEmergencyModal(false);
             loadMyTokens();
-            if (user.role === Role.DOCTOR && selectedDoctor === user.id) loadDoctorQueue(user.id);
-        } catch (e) {
-            alert('Failed to join queue');
+            loadDoctorQueue(selectedDoctor);
+
+        } catch (err: any) {
+            const error = err as RegisterTokenError;
+
+            if (error.requiresReason) {
+                setShowEmergencyModal(true);
+            } else if (error.isEmergencyValid === false) {
+                toast.warning('Not an Emergency', error.hint || error.message);
+            } else if (error.maxTokens) {
+                toast.error('Queue Full', `Maximum ${error.maxTokens} patients for today. Try again tomorrow.`);
+            } else {
+                toast.error('Failed to Join Queue', error.message || 'Please try again');
+            }
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleEmergencySubmit = (reason: string) => {
+        handleJoinQueue(true, reason);
     };
 
     const handleNextPatient = async () => {
@@ -82,8 +177,11 @@ export const QueueManagement = () => {
         const nextToken = doctorQueue.queue[0];
         try {
             await updateTokenStatus(nextToken._id, 'ACTIVE');
+            toast.info('Next Patient', `Token #${nextToken.tokenNumber} - ${nextToken.patientName}`);
             loadDoctorQueue(user!.id);
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            toast.error('Error', 'Failed to call next patient');
+        }
     };
 
     const [analytics, setAnalytics] = useState<{ dailyLoad: number, completedPatients: number, avgConsultationTime: number } | null>(null);
@@ -284,7 +382,7 @@ export const QueueManagement = () => {
 
             {/* Notification Area */}
             {myTokens.some(t => t.status === 'PENDING' && t.estimatedTime && (new Date(t.estimatedTime).getTime() - Date.now() < 15 * 60000) && (new Date(t.estimatedTime).getTime() - Date.now() > 0)) && (
-                <div className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-xl shadow-2xl border border-blue-400 animate-bounce cursor-pointer" onClick={() => alert('Please head to the waiting area!')}>
+                <div className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-xl shadow-2xl border border-blue-400 animate-bounce cursor-pointer" onClick={() => toast.info('Get Ready!', 'Please head to the waiting area!')}>
                     <div className="flex items-center gap-3">
                         <span className="text-2xl">🔔</span>
                         <div>
@@ -294,6 +392,14 @@ export const QueueManagement = () => {
                     </div>
                 </div>
             )}
+
+            {/* Emergency Modal */}
+            <EmergencyModal
+                isOpen={showEmergencyModal}
+                onClose={() => setShowEmergencyModal(false)}
+                onSubmit={handleEmergencySubmit}
+                loading={loading}
+            />
         </div>
     );
 };

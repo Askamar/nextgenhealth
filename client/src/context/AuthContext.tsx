@@ -38,7 +38,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return userData;
     } catch (error) {
       console.error(error);
-      alert("Login Failed: Use demo credentials (see login page)");
       throw error;
     } finally {
       setLoading(false);
@@ -54,7 +53,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return userData;
     } catch (error: any) {
       console.error(error);
-      alert(error.message || "Login Failed");
       throw error;
     } finally {
       setLoading(false);
@@ -70,7 +68,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return newUser;
     } catch (error) {
       console.error(error);
-      alert("Registration failed");
       throw error;
     } finally {
       setLoading(false);

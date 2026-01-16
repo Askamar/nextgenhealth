@@ -265,25 +265,44 @@ export const verifyOtp = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
-  // Legacy email login preserved for Admin/Doctor
+  // Support login with email OR phone + password
   const { email, password, role } = req.body;
+
   try {
-    const user: any = await User.findOne({ email });
-    if (user && user.password && (await bcrypt.compare(password, user.password))) {
-      if (role && user.role !== role) {
-        return res.status(401).json({ message: 'Unauthorized role' });
-      }
-      res.json({
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        token: generateToken(user._id)
-      });
-    } else {
-      res.status(401).json({ message: 'Invalid credentials' });
+    // Search by email or phone
+    const user: any = await User.findOne({
+      $or: [{ email: email }, { phone: email }]
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: 'User not found. Please check your credentials.' });
     }
+
+    if (!user.password) {
+      return res.status(401).json({ message: 'No password set for this account. Please use OTP login or reset password.' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid password' });
+    }
+
+    if (role && user.role !== role) {
+      return res.status(401).json({ message: 'Unauthorized role' });
+    }
+
+    res.json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      avatar: user.avatar,
+      token: generateToken(user._id)
+    });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
