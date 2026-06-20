@@ -4,7 +4,8 @@ import { USERS, APPOINTMENTS, DEPARTMENTS, REPORTS, NOTIFICATIONS, VACCINES } fr
 export { DEPARTMENTS };
 
 // TOGGLE THIS TO SWITCH BETWEEN MOCK AND REAL BACKEND
-const USE_MOCK_DATA = true;
+// TOGGLE THIS TO SWITCH BETWEEN MOCK AND REAL BACKEND
+const USE_MOCK_DATA = false;
 const API_URL = 'http://localhost:5000/api';
 
 // --- HELPER ---
@@ -27,7 +28,7 @@ const fetchAPI = async (endpoint: string, options: any = {}) => {
 // ==========================================
 
 const MockAPI = {
-    login: async (email: string, role: Role): Promise<User> => {
+    login: async (email: string, password: string, role: Role): Promise<User> => {
         await delay(800);
         const user = USERS.find(u => u.email === email && u.role === role);
         if (!user) throw new Error('Invalid credentials');
@@ -116,7 +117,38 @@ const MockAPI = {
         doctors: USERS.filter(u => u.role === Role.DOCTOR).length,
         patients: USERS.filter(u => u.role === Role.PATIENT).length,
         appointments: APPOINTMENTS.length
-    })
+    }),
+    createPrescription: async (data: any) => {
+        await delay(500);
+        return { prescription: { id: `rx${Math.random()}`, ...data }, safetyCheck: { isSafe: true } };
+    },
+    getPatientPrescriptions: async (patientId: string) => {
+        await delay(500);
+        return [];
+    },
+    getDoctorPrescriptions: async (doctorId: string) => {
+        await delay(500);
+        return [];
+    },
+    getAiSymptomCheck: async (query: string) => {
+        await delay(600);
+        return { matchedDepartment: 'General Medicine', scorePercentage: 80, recommendedDoctors: USERS.filter(u => u.role === Role.DOCTOR) };
+    },
+    getDrugAutocomplete: async (query: string) => {
+        await delay(300);
+        return ['Aspirin', 'Warfarin', 'Paracetamol', 'Ibuprofen', 'Amoxicillin'].filter(d => d.toLowerCase().includes(query.toLowerCase()));
+    },
+    checkDrugInteractions: async (drugs: string[]) => {
+        await delay(400);
+        if (drugs.includes('Aspirin') && drugs.includes('Warfarin')) {
+            return { isSafe: false, warning: 'Warning (High): Avoid co-administration. High risk of bleeding.' };
+        }
+        return { isSafe: true };
+    },
+    updateDoctor: async (id: string, data: any) => {
+        await delay(500);
+        return { id, ...data };
+    }
 };
 
 // ==========================================
@@ -124,7 +156,7 @@ const MockAPI = {
 // ==========================================
 
 const RealAPI = {
-    login: (email: string, role: Role) => fetchAPI('/auth/login', { method: 'POST', body: JSON.stringify({ email, password: '123', role }) }),
+    login: (email: string, password: string, role: Role) => fetchAPI('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, role }) }),
     register: (data: any) => fetchAPI('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
     
     getDoctors: () => fetchAPI('/users?role=DOCTOR'),
@@ -146,7 +178,14 @@ const RealAPI = {
 
     getMedicalReports: (userId: string) => fetchAPI(`/reports?userId=${userId}`),
     getNotifications: async (userId: string) => NOTIFICATIONS, // Mocked for now
-    getStats: async () => ({ doctors: 0, patients: 0, appointments: 0 }) // Should implement /stats endpoint
+    getStats: () => fetchAPI('/health-metrics'), // Point to OOP Singleton metrics endpoint
+    createPrescription: (data: any) => fetchAPI('/prescriptions', { method: 'POST', body: JSON.stringify(data) }),
+    getPatientPrescriptions: (patientId: string) => fetchAPI(`/prescriptions/patient/${patientId}`),
+    getDoctorPrescriptions: (doctorId: string) => fetchAPI(`/prescriptions/doctor/${doctorId}`),
+    getAiSymptomCheck: (query: string) => fetchAPI(`/symptom-analyze?query=${encodeURIComponent(query)}`),
+    getDrugAutocomplete: (query: string) => fetchAPI(`/dsa/drug/autocomplete?q=${encodeURIComponent(query)}`),
+    checkDrugInteractions: (drugs: string[]) => fetchAPI('/dsa/drug/interactions', { method: 'POST', body: JSON.stringify({ drugs }) }),
+    updateDoctor: (id: string, data: any) => fetchAPI(`/users/${id}`, { method: 'PUT', body: JSON.stringify({ doctorDetails: data }) })
 };
 
 // Export based on flag
@@ -173,3 +212,11 @@ export const deleteVaccineAPI = USE_MOCK_DATA ? MockAPI.deleteVaccine : RealAPI.
 export const getMedicalReportsAPI = USE_MOCK_DATA ? MockAPI.getMedicalReports : RealAPI.getMedicalReports;
 export const getNotificationsAPI = USE_MOCK_DATA ? MockAPI.getNotifications : RealAPI.getNotifications;
 export const getStatsAPI = USE_MOCK_DATA ? MockAPI.getStats : RealAPI.getStats;
+
+export const createPrescriptionAPI = USE_MOCK_DATA ? MockAPI.createPrescription : RealAPI.createPrescription;
+export const getPatientPrescriptionsAPI = USE_MOCK_DATA ? MockAPI.getPatientPrescriptions : RealAPI.getPatientPrescriptions;
+export const getDoctorPrescriptionsAPI = USE_MOCK_DATA ? MockAPI.getDoctorPrescriptions : RealAPI.getDoctorPrescriptions;
+export const getAiSymptomCheckAPI = USE_MOCK_DATA ? MockAPI.getAiSymptomCheck : RealAPI.getAiSymptomCheck;
+export const getDrugAutocompleteAPI = USE_MOCK_DATA ? MockAPI.getDrugAutocomplete : RealAPI.getDrugAutocomplete;
+export const checkDrugInteractionsAPI = USE_MOCK_DATA ? MockAPI.checkDrugInteractions : RealAPI.checkDrugInteractions;
+export const updateDoctorAPI = USE_MOCK_DATA ? MockAPI.updateDoctor : RealAPI.updateDoctor;

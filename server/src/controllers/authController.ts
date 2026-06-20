@@ -1,14 +1,12 @@
-
 import { Request, Response } from 'express';
-import { User, Otp } from '../models';
+import { prisma } from '../config/db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { sendEmail } from '../utils/emailService';
 
 const generateToken = (id: string) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'secret', { expiresIn: '30d' });
 };
-
-import { sendEmail } from '../utils/emailService';
 
 export const requestOtp = async (req: Request, res: Response) => {
   const { phone, email, isRegistration } = req.body;
@@ -18,7 +16,7 @@ export const requestOtp = async (req: Request, res: Response) => {
   }
 
   try {
-    const user = await User.findOne({ phone });
+    const user = await prisma.user.findUnique({ where: { phone } });
 
     if (isRegistration && user) {
       return res.status(400).json({ message: 'Phone already registered.' });
@@ -33,11 +31,11 @@ export const requestOtp = async (req: Request, res: Response) => {
     console.log(`[OTP] Generated ${code} for ${phone}`);
 
     // Persist OTP
-    await Otp.findOneAndUpdate(
-      { phone },
-      { code, expiresAt, attempts: 0 },
-      { upsert: true }
-    );
+    await prisma.otp.upsert({
+      where: { phone },
+      update: { code, expiresAt, attempts: 0 },
+      create: { phone, code, expiresAt, attempts: 0 }
+    });
 
     // Send via Email if provided (Registration) or if user has email (Login)
     let emailSent = false;
@@ -49,8 +47,6 @@ export const requestOtp = async (req: Request, res: Response) => {
         emailSent = true;
       } catch (err) {
         console.error("Failed to send email OTP", err);
-        // Continue execution, don't fail just because email failed? 
-        // Or warn user? Taking safe route: continue but log.
       }
     }
 
@@ -65,46 +61,48 @@ export const requestOtp = async (req: Request, res: Response) => {
 };
 
 // Direct Register (No OTP)
-// Direct Register (No OTP)
 export const register = async (req: Request, res: Response) => {
   const { phone, userData, password } = req.body;
 
-  // Safety check: Ensure phone is not already registered
-  const existingUser = await User.findOne({ phone });
-  if (existingUser) {
-    return res.status(400).json({ message: 'Phone already registered.' });
-  }
-
   try {
+    // Safety check: Ensure phone is not already registered
+    const existingUser = await prisma.user.findUnique({ where: { phone } });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Phone already registered.' });
+    }
+
     const patientId = `PID${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000)}`;
 
     // Hash password
-    const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     const { address, gender, dob, age, govId, ...rest } = userData;
 
-    const user = await User.create({
-      ...rest,
-      phone,
-      password: hashedPassword,
-      role: 'PATIENT',
-      address: address || {},
-      patientDetails: {
+    const user = await prisma.user.create({
+      data: {
+        ...rest,
+        phone,
+        password: hashedPassword,
+        role: 'PATIENT',
+        addressStreet: address?.street || null,
+        addressCity: address?.city || null,
+        addressState: address?.state || null,
+        addressPincode: address?.pincode || null,
         patientId,
-        gender,
-        dob,
-        age,
-        govId
-      },
-      avatar: `https://ui-avatars.com/api/?name=${userData.name}`
+        patientGender: gender || null,
+        patientDob: dob || null,
+        patientAge: age ? Number(age) : null,
+        patientGovIdType: govId?.type || null,
+        patientGovIdNumber: govId?.number || null,
+        avatar: `https://ui-avatars.com/api/?name=${userData.name}`
+      }
     });
 
-    // We return success but NO token, forcing them to login
     res.json({
       success: true,
       message: 'Registration successful. Please login.',
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name
       }
     });
@@ -118,16 +116,16 @@ export const forgotPassword = async (req: Request, res: Response) => {
   const { identifier } = req.body; // Email or Phone
 
   try {
-    const user = await User.findOne({
-      $or: [{ email: identifier }, { phone: identifier }]
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [{ email: identifier }, { phone: identifier }]
+      }
     });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    // Ideally send to email if present, else fallback or error?
-    // Requirement says "send verification to reset password send to the email"
     if (!user.email && !identifier.includes('@')) {
       return res.status(400).json({ message: 'No email associated with this account. Cannot reset password.' });
     }
@@ -141,18 +139,11 @@ export const forgotPassword = async (req: Request, res: Response) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
-    // Save OTP (associated with phone as primary key usually, or email?)
-    // Our OTP schema uses 'phone', let's stick to using phone if user has one, effectively using phone as key for OTP.
-    // Or if user found by email, use user.phone as key if available.
-    // User schema guarantees phone is required for everyone except maybe legacy? 
-    // User schema: phone: { type: String, required: true, unique: true }
-    // So we can always index OTP by phone.
-
-    await Otp.findOneAndUpdate(
-      { phone: user.phone },
-      { code, expiresAt, attempts: 0 },
-      { upsert: true }
-    );
+    await prisma.otp.upsert({
+      where: { phone: user.phone },
+      update: { code, expiresAt, attempts: 0 },
+      create: { phone: user.phone, code, expiresAt, attempts: 0 }
+    });
 
     await sendEmail(targetEmail, 'Password Reset Code', `Your password reset code is: ${code}`);
 
@@ -168,27 +159,33 @@ export const resetPassword = async (req: Request, res: Response) => {
   const { identifier, otp, newPassword } = req.body;
 
   try {
-    const user = await User.findOne({
-      $or: [{ email: identifier }, { phone: identifier }]
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [{ email: identifier }, { phone: identifier }]
+      }
     });
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const otpRecord = await Otp.findOne({ phone: user.phone });
+    const otpRecord = await prisma.otp.findUnique({ where: { phone: user.phone } });
     if (!otpRecord) return res.status(400).json({ message: 'Invalid or expired OTP' });
 
     if (otpRecord.code !== otp) {
-      otpRecord.attempts += 1;
-      await otpRecord.save();
+      await prisma.otp.update({
+        where: { phone: user.phone },
+        data: { attempts: otpRecord.attempts + 1 }
+      });
       return res.status(400).json({ message: 'Invalid OTP code' });
     }
 
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-    await user.save();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword }
+    });
 
-    await Otp.deleteOne({ phone: user.phone });
+    await prisma.otp.delete({ where: { phone: user.phone } });
 
     res.json({ success: true, message: 'Password reset successful. Please login.' });
 
@@ -201,46 +198,49 @@ export const resetPassword = async (req: Request, res: Response) => {
 export const verifyOtp = async (req: Request, res: Response) => {
   const { phone, otp, userData } = req.body;
   try {
-    const otpRecord = await Otp.findOne({ phone });
+    const otpRecord = await prisma.otp.findUnique({ where: { phone } });
 
     if (!otpRecord) {
       return res.status(400).json({ message: 'OTP expired or not found.' });
     }
 
     if (otpRecord.attempts >= 3) {
-      await Otp.deleteOne({ phone });
+      await prisma.otp.delete({ where: { phone } });
       return res.status(400).json({ message: 'Too many failed attempts. Request a new OTP.' });
     }
 
     if (otpRecord.code !== otp) {
-      otpRecord.attempts += 1;
-      await otpRecord.save();
+      await prisma.otp.update({
+        where: { phone },
+        data: { attempts: otpRecord.attempts + 1 }
+      });
       return res.status(400).json({ message: 'Invalid OTP code.' });
     }
 
-    // FIX: Use findOne instead of find to avoid array type mismatch
-    let user = await User.findOne({ phone });
+    let user = await prisma.user.findUnique({ where: { phone } });
 
     if (!user && userData) {
       // Create user on successful registration OTP verification
       const patientId = `PID${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000)}`;
-
-      // Extract patient specific details from userData
       const { address, gender, dob, age, govId, ...rest } = userData;
 
-      user = await User.create({
-        ...rest,
-        phone,
-        role: 'PATIENT',
-        address: address || {},
-        patientDetails: {
+      user = await prisma.user.create({
+        data: {
+          ...rest,
+          phone,
+          role: 'PATIENT',
+          addressStreet: address?.street || null,
+          addressCity: address?.city || null,
+          addressState: address?.state || null,
+          addressPincode: address?.pincode || null,
           patientId,
-          gender,
-          dob,
-          age,
-          govId
-        },
-        avatar: `https://ui-avatars.com/api/?name=${userData.name}`
+          patientGender: gender || null,
+          patientDob: dob || null,
+          patientAge: age ? Number(age) : null,
+          patientGovIdType: govId?.type || null,
+          patientGovIdNumber: govId?.number || null,
+          avatar: `https://ui-avatars.com/api/?name=${userData.name}`
+        }
       });
     }
 
@@ -249,29 +249,30 @@ export const verifyOtp = async (req: Request, res: Response) => {
     }
 
     // Cleanup OTP
-    await Otp.deleteOne({ phone });
+    await prisma.otp.delete({ where: { phone } });
 
     res.json({
-      id: user._id,
+      id: user.id,
       name: user.name,
       phone: user.phone,
       role: user.role,
       avatar: user.avatar,
-      token: generateToken(user._id.toString())
+      token: generateToken(user.id)
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: 'Verification error' });
   }
 };
 
 export const login = async (req: Request, res: Response) => {
-  // Support login with email OR phone + password
   const { email, password, role } = req.body;
 
   try {
-    // Search by email or phone
-    const user: any = await User.findOne({
-      $or: [{ email: email }, { phone: email }]
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [{ email: email }, { phone: email }]
+      }
     });
 
     if (!user) {
@@ -293,13 +294,13 @@ export const login = async (req: Request, res: Response) => {
     }
 
     res.json({
-      id: user._id,
+      id: user.id,
       name: user.name,
       email: user.email,
       phone: user.phone,
       role: user.role,
       avatar: user.avatar,
-      token: generateToken(user._id)
+      token: generateToken(user.id)
     });
   } catch (error) {
     console.error('Login error:', error);

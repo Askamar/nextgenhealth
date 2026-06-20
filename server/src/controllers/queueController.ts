@@ -1,6 +1,5 @@
-
 import { Request, Response } from 'express';
-import { Token, User } from '../models';
+import { prisma } from '../config/db';
 
 // Emergency Criteria - keywords that qualify for emergency
 const EMERGENCY_KEYWORDS = [
@@ -31,7 +30,7 @@ export const registerToken = async (req: Request, res: Response) => {
     try {
         const { patientId, doctorId, type, emergencyReason } = req.body;
 
-        const doctor = await User.findById(doctorId);
+        const doctor = await prisma.user.findUnique({ where: { id: doctorId } });
         if (!doctor || doctor.role !== 'DOCTOR') {
             return res.status(404).json({ message: 'Doctor not found' });
         }
@@ -41,14 +40,16 @@ export const registerToken = async (req: Request, res: Response) => {
 
         // ===== TOKEN LIMIT CHECK =====
         // Calculate max tokens based on working hours (assume 8 hours) and avg consultation time
-        const avgTime = doctor.doctorDetails?.avgConsultationTime || 15;
+        const avgTime = doctor.doctorAvgConsultationTime || 15;
         const workingMinutes = 8 * 60; // 8 hours
         const maxDailyTokens = Math.floor(workingMinutes / avgTime);
 
         // Count today's tokens for this doctor
-        const todayTokenCount = await Token.countDocuments({
-            doctorId,
-            createdAt: { $gte: today }
+        const todayTokenCount = await prisma.token.count({
+            where: {
+                doctorId,
+                createdAt: { gte: today }
+            }
         });
 
         if (todayTokenCount >= maxDailyTokens) {
@@ -60,11 +61,13 @@ export const registerToken = async (req: Request, res: Response) => {
         }
 
         // ===== CHECK IF PATIENT ALREADY HAS A TOKEN =====
-        const existingToken = await Token.findOne({
-            patientId,
-            doctorId,
-            status: { $in: ['PENDING', 'ACTIVE'] },
-            createdAt: { $gte: today }
+        const existingToken = await prisma.token.findFirst({
+            where: {
+                patientId,
+                doctorId,
+                status: { in: ['PENDING', 'ACTIVE'] },
+                createdAt: { gte: today }
+            }
         });
 
         if (existingToken) {
@@ -100,17 +103,24 @@ export const registerToken = async (req: Request, res: Response) => {
         }
 
         // Find pending tokens for today to calculate position
-        const pendingTokens = await Token.countDocuments({
-            doctorId,
-            status: { $in: ['PENDING', 'ACTIVE'] },
-            createdAt: { $gte: today }
+        const pendingTokens = await prisma.token.count({
+            where: {
+                doctorId,
+                status: { in: ['PENDING', 'ACTIVE'] },
+                createdAt: { gte: today }
+            }
         });
 
         // Find last token number
-        const lastToken = await Token.findOne({
-            doctorId,
-            createdAt: { $gte: today }
-        }).sort({ tokenNumber: -1 });
+        const lastToken = await prisma.token.findFirst({
+            where: {
+                doctorId,
+                createdAt: { gte: today }
+            },
+            orderBy: {
+                tokenNumber: 'desc'
+            }
+        });
 
         const newTokenNumber = lastToken ? lastToken.tokenNumber + 1 : 1;
 
@@ -120,18 +130,18 @@ export const registerToken = async (req: Request, res: Response) => {
             : pendingTokens * avgTime;
         const estimatedTime = new Date(Date.now() + estWaitMinutes * 60000);
 
-        const newToken = new Token({
-            patientId,
-            patientName: req.body.patientName || 'Unknown',
-            doctorId,
-            tokenNumber: newTokenNumber,
-            status: 'PENDING',
-            type: tokenType,
-            emergencyReason: tokenType === 'EMERGENCY' ? emergencyReason : undefined,
-            estimatedTime
+        const newToken = await prisma.token.create({
+            data: {
+                patientId,
+                patientName: req.body.patientName || 'Unknown',
+                doctorId,
+                tokenNumber: newTokenNumber,
+                status: 'PENDING',
+                type: tokenType,
+                emergencyReason: tokenType === 'EMERGENCY' ? emergencyReason : null,
+                estimatedTime
+            }
         });
-
-        await newToken.save();
 
         res.status(201).json({
             success: true,
@@ -156,22 +166,25 @@ export const getQueueStatus = async (req: Request, res: Response) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const activeToken = await Token.findOne({
-            doctorId,
-            status: 'ACTIVE',
-            createdAt: { $gte: today }
+        const activeToken = await prisma.token.findFirst({
+            where: {
+                doctorId,
+                status: 'ACTIVE',
+                createdAt: { gte: today }
+            }
         });
 
-        const pendingTokens = await Token.find({
-            doctorId,
-            status: 'PENDING',
-            createdAt: { $gte: today }
-        }).sort({ type: 1, tokenNumber: 1 }); // Sort by Type (EMERGENCY?? alphabetical?? No - Emergency logic needed)
-        // Actually alphabetical 'EMERGENCY' vs 'REGULAR'. 'E' < 'R', so Emergency comes first with simple sort?
-        // Let's rely on Creation order for now (tokenNumber). If urgent, we might need manual override.
-
-        // Better sort: Emergency first, then TokenNumber
-        // But 'E' < 'R' works.
+        const pendingTokens = await prisma.token.findMany({
+            where: {
+                doctorId,
+                status: 'PENDING',
+                createdAt: { gte: today }
+            },
+            orderBy: [
+                { type: 'asc' }, // 'EMERGENCY' < 'REGULAR' so emergency comes first
+                { tokenNumber: 'asc' }
+            ]
+        });
 
         res.json({
             activeToken,
@@ -187,41 +200,52 @@ export const getQueueStatus = async (req: Request, res: Response) => {
 export const updateTokenStatus = async (req: Request, res: Response) => {
     try {
         const { tokenId, status } = req.body;
-        const token = await Token.findById(tokenId);
+        const token = await prisma.token.findUnique({ where: { id: tokenId } });
         if (!token) return res.status(404).json({ message: 'Token not found' });
 
+        let startTime: Date | null = token.startTime;
+        let endTime: Date | null = token.endTime;
+
         if (status === 'ACTIVE') {
-            token.startTime = new Date();
+            startTime = new Date();
         } else if (status === 'COMPLETED') {
-            const endTime = new Date();
-            token.endTime = endTime;
+            endTime = new Date();
 
             // Calculate actual duration
             if (token.startTime) {
                 const durationMinutes = (endTime.getTime() - new Date(token.startTime).getTime()) / 60000;
 
                 // Update Doctor's avgConsultationTime (Moving Average)
-                const doctor = await User.findById(token.doctorId);
-                if (doctor && doctor.doctorDetails) {
-                    const currentAvg = doctor.doctorDetails.avgConsultationTime || 15;
-                    const patientsServed = doctor.doctorDetails.patients || 0;
+                const doctor = await prisma.user.findUnique({ where: { id: token.doctorId } });
+                if (doctor) {
+                    const currentAvg = doctor.doctorAvgConsultationTime || 15;
+                    const patientsServed = doctor.doctorPatients || 0;
 
-                    // Simple moving average formula: NewAvg = ((OldAvg * N) + NewVal) / (N + 1)
-                    // We cap N at 50 to keep it responsive to recent trends
+                    // Simple moving average formula
                     const reviewCount = Math.min(patientsServed, 50);
                     const newAvg = ((currentAvg * reviewCount) + durationMinutes) / (reviewCount + 1);
 
-                    doctor.doctorDetails.avgConsultationTime = Math.round(newAvg);
-                    doctor.doctorDetails.patients = patientsServed + 1;
-                    await doctor.save();
+                    await prisma.user.update({
+                        where: { id: token.doctorId },
+                        data: {
+                            doctorAvgConsultationTime: Math.round(newAvg),
+                            doctorPatients: patientsServed + 1
+                        }
+                    });
                 }
             }
         }
 
-        token.status = status;
-        await token.save();
+        const updatedToken = await prisma.token.update({
+            where: { id: tokenId },
+            data: {
+                status,
+                startTime,
+                endTime
+            }
+        });
 
-        res.json({ success: true, token });
+        res.json({ success: true, token: updatedToken });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
     }
@@ -234,25 +258,34 @@ export const getQueueAnalytics = async (req: Request, res: Response) => {
         today.setHours(0, 0, 0, 0);
 
         // Daily Load (Total tokens today)
-        const dailyLoad = await Token.countDocuments({
-            doctorId,
-            createdAt: { $gte: today }
+        const dailyLoad = await prisma.token.count({
+            where: {
+                doctorId,
+                createdAt: { gte: today }
+            }
         });
 
         // Completed Patients
-        const completedPatients = await Token.countDocuments({
-            doctorId,
-            status: 'COMPLETED',
-            createdAt: { $gte: today }
+        const completedPatients = await prisma.token.count({
+            where: {
+                doctorId,
+                status: 'COMPLETED',
+                createdAt: { gte: today }
+            }
         });
 
-        // Average Consultation Time (fetched from user profile which is updated live)
-        const doctor = await User.findById(doctorId).select('doctorDetails.avgConsultationTime');
+        // Average Consultation Time
+        const doctor = await prisma.user.findUnique({
+            where: { id: doctorId },
+            select: {
+                doctorAvgConsultationTime: true
+            }
+        });
 
         res.json({
             dailyLoad,
             completedPatients,
-            avgConsultationTime: doctor?.doctorDetails?.avgConsultationTime || 15
+            avgConsultationTime: doctor?.doctorAvgConsultationTime || 15
         });
 
     } catch (error) {
@@ -266,13 +299,36 @@ export const getPatientToken = async (req: Request, res: Response) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const tokens = await Token.find({
-            patientId,
-            createdAt: { $gte: today }
-        }).populate('doctorId', 'name doctorDetails.specialization');
+        const tokens = await prisma.token.findMany({
+            where: {
+                patientId,
+                createdAt: { gte: today }
+            }
+        });
 
-        res.json(tokens);
+        // Populate doctor details manually
+        const populatedTokens = await Promise.all(tokens.map(async (token) => {
+            const doctor = await prisma.user.findUnique({
+                where: { id: token.doctorId },
+                select: {
+                    name: true,
+                    doctorSpecialization: true
+                }
+            });
+            return {
+                ...token,
+                doctorId: {
+                    id: token.doctorId,
+                    name: doctor?.name || 'Unknown Doctor',
+                    doctorDetails: {
+                        specialization: doctor?.doctorSpecialization || 'General'
+                    }
+                }
+            };
+        }));
+
+        res.json(populatedTokens);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
     }
-}
+};

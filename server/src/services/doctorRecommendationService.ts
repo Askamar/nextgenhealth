@@ -8,7 +8,7 @@
  */
 
 import { Graph } from '../utils/dataStructures';
-import { User } from '../models';
+import { prisma } from '../config/db';
 
 // Types
 interface DoctorNode {
@@ -174,10 +174,14 @@ export const recommendDoctors = async (
 
     // Step 2: Get all doctors with matching specializations
     const relevantSpecializations = Array.from(specializationScores.keys());
-    const doctors = await User.find({
-        role: 'DOCTOR',
-        'doctorDetails.specialization': {
-            $regex: new RegExp(relevantSpecializations.join('|'), 'i')
+    const doctors = await prisma.user.findMany({
+        where: {
+            role: 'DOCTOR',
+            OR: relevantSpecializations.map(spec => ({
+                doctorSpecialization: {
+                    contains: spec
+                }
+            }))
         }
     });
 
@@ -185,17 +189,17 @@ export const recommendDoctors = async (
     const recommendations: RecommendationResult[] = [];
 
     for (const doctor of doctors) {
-        const spec = doctor.doctorDetails?.specialization?.toUpperCase() || '';
+        const spec = doctor.doctorSpecialization?.toUpperCase() || '';
         const specScore = specializationScores.get(spec) ||
             specializationScores.get(spec.replace(/\s+/g, '_')) || 0;
 
         const doctorNode: DoctorNode = {
-            id: doctor._id.toString(),
+            id: doctor.id,
             name: doctor.name,
-            specialization: doctor.doctorDetails?.specialization || '',
-            rating: doctor.doctorDetails?.rating || 4.0,
-            avgWaitTime: doctor.doctorDetails?.avgConsultationTime || 15,
-            experience: doctor.doctorDetails?.experience || 5
+            specialization: doctor.doctorSpecialization || '',
+            rating: doctor.doctorRating || 4.0,
+            avgWaitTime: doctor.doctorAvgConsultationTime || 15,
+            experience: doctor.doctorExperience || 5
         };
 
         const score = calculateDoctorScore(doctorNode, specScore);
@@ -246,8 +250,6 @@ export const findSymptomPath = (symptom: string): string[] => {
         for (const { node } of neighbors) {
             if (!visited.has(node)) {
                 path.push(node);
-                // Don't continue BFS from specializations
-                // They are leaf nodes in our symptom->specialization graph
             }
         }
     }

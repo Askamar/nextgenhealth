@@ -1,7 +1,6 @@
-
 import express from 'express';
 import * as authController from '../controllers/authController';
-import { User, Appointment, Vaccine, MedicalReport } from '../models';
+import { prisma } from '../config/db';
 
 const router = express.Router();
 
@@ -15,72 +14,181 @@ router.post('/auth/reset-password', authController.resetPassword);
 
 // --- USERS ---
 router.get('/users', async (req, res) => {
-    const role = req.query.role;
-    const filter = role ? { role } : {};
-    const users = await User.find(filter);
-    res.json(users);
+    try {
+        const role = req.query.role as string;
+        const filter = role ? { role } : {};
+        const users = await prisma.user.findMany({ where: filter });
+        res.json(users);
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 router.post('/users', async (req, res) => {
-    const user = await User.create(req.body);
-    res.json(user);
+    try {
+        const { address, patientDetails, doctorDetails, ...rest } = req.body;
+        const user = await prisma.user.create({
+            data: {
+                ...rest,
+                addressStreet: address?.street || null,
+                addressCity: address?.city || null,
+                addressState: address?.state || null,
+                addressPincode: address?.pincode || null,
+                patientId: patientDetails?.patientId || null,
+                patientDob: patientDetails?.dob || null,
+                patientAge: patientDetails?.age ? Number(patientDetails.age) : null,
+                patientBloodGroup: patientDetails?.bloodGroup || null,
+                patientGender: patientDetails?.gender || null,
+                patientAllergies: patientDetails?.allergies || null,
+                patientWeight: patientDetails?.weight || null,
+                patientHeight: patientDetails?.height || null,
+                patientLastVisit: patientDetails?.lastVisit ? new Date(patientDetails.lastVisit) : null,
+                patientGovIdType: patientDetails?.govId?.type || null,
+                patientGovIdNumber: patientDetails?.govId?.number || null,
+                doctorSpecialization: doctorDetails?.specialization || null,
+                doctorQualification: doctorDetails?.qualification || null,
+                doctorExperience: doctorDetails?.experience ? Number(doctorDetails.experience) : null,
+                doctorAvailability: doctorDetails?.availability ? JSON.stringify(doctorDetails.availability) : null,
+                doctorRating: doctorDetails?.rating ? Number(doctorDetails.rating) : null,
+                doctorPatients: doctorDetails?.patients ? Number(doctorDetails.patients) : null,
+                doctorAvgConsultationTime: doctorDetails?.avgConsultationTime ? Number(doctorDetails.avgConsultationTime) : 15
+            }
+        });
+        res.json(user);
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 router.put('/users/:id', async (req, res) => {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(user);
+    try {
+        const { address, patientDetails, doctorDetails, ...rest } = req.body;
+        const data: any = { ...rest };
+        
+        if (address) {
+            if (address.street !== undefined) data.addressStreet = address.street;
+            if (address.city !== undefined) data.addressCity = address.city;
+            if (address.state !== undefined) data.addressState = address.state;
+            if (address.pincode !== undefined) data.addressPincode = address.pincode;
+        }
+        if (patientDetails) {
+            if (patientDetails.patientId !== undefined) data.patientId = patientDetails.patientId;
+            if (patientDetails.dob !== undefined) data.patientDob = patientDetails.dob;
+            if (patientDetails.age !== undefined) data.patientAge = Number(patientDetails.age);
+            if (patientDetails.bloodGroup !== undefined) data.patientBloodGroup = patientDetails.bloodGroup;
+            if (patientDetails.gender !== undefined) data.patientGender = patientDetails.gender;
+            if (patientDetails.allergies !== undefined) data.patientAllergies = patientDetails.allergies;
+            if (patientDetails.weight !== undefined) data.patientWeight = patientDetails.weight;
+            if (patientDetails.height !== undefined) data.patientHeight = patientDetails.height;
+            if (patientDetails.lastVisit !== undefined) data.patientLastVisit = patientDetails.lastVisit ? new Date(patientDetails.lastVisit) : null;
+            if (patientDetails.govId) {
+                if (patientDetails.govId.type !== undefined) data.patientGovIdType = patientDetails.govId.type;
+                if (patientDetails.govId.number !== undefined) data.patientGovIdNumber = patientDetails.govId.number;
+            }
+        }
+        if (doctorDetails) {
+            if (doctorDetails.specialization !== undefined) data.doctorSpecialization = doctorDetails.specialization;
+            if (doctorDetails.qualification !== undefined) data.doctorQualification = doctorDetails.qualification;
+            if (doctorDetails.experience !== undefined) data.doctorExperience = Number(doctorDetails.experience);
+            if (doctorDetails.availability !== undefined) data.doctorAvailability = JSON.stringify(doctorDetails.availability);
+            if (doctorDetails.rating !== undefined) data.doctorRating = Number(doctorDetails.rating);
+            if (doctorDetails.patients !== undefined) data.doctorPatients = Number(doctorDetails.patients);
+            if (doctorDetails.avgConsultationTime !== undefined) data.doctorAvgConsultationTime = Number(doctorDetails.avgConsultationTime);
+        }
+
+        const user = await prisma.user.update({
+            where: { id: req.params.id },
+            data
+        });
+        res.json(user);
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 router.delete('/users/:id', async (req, res) => {
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ message: 'User deleted' });
+    try {
+        await prisma.user.delete({ where: { id: req.params.id } });
+        res.json({ message: 'User deleted' });
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 // --- APPOINTMENTS ---
 router.get('/appointments', async (req, res) => {
-    const { userId, role } = req.query;
-    let query = {};
-    if (role === 'PATIENT') query = { patientId: userId };
-    else if (role === 'DOCTOR') query = { doctorId: userId };
+    try {
+        const { userId, role } = req.query;
+        let query: any = {};
+        if (role === 'PATIENT') query = { patientId: userId as string };
+        else if (role === 'DOCTOR') query = { doctorId: userId as string };
 
-    const appointments = await Appointment.find(query);
-    res.json(appointments);
+        const appointments = await prisma.appointment.findMany({ where: query });
+        res.json(appointments);
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 router.post('/appointments', async (req, res) => {
-    const appt = await Appointment.create(req.body);
-    res.json(appt);
+    try {
+        const appt = await prisma.appointment.create({ data: req.body });
+        res.json(appt);
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 router.put('/appointments/:id/status', async (req, res) => {
-    const appt = await Appointment.findByIdAndUpdate(
-        req.params.id,
-        { status: req.body.status },
-        { new: true }
-    );
-    res.json(appt);
+    try {
+        const appt = await prisma.appointment.update({
+            where: { id: req.params.id },
+            data: { status: req.body.status }
+        });
+        res.json(appt);
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 // --- VACCINES ---
 router.get('/vaccines', async (req, res) => {
-    const vaccines = await Vaccine.find({});
-    res.json(vaccines);
+    try {
+        const vaccines = await prisma.vaccine.findMany({});
+        res.json(vaccines);
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 router.post('/vaccines', async (req, res) => {
-    const vac = await Vaccine.create(req.body);
-    res.json(vac);
+    try {
+        const vac = await prisma.vaccine.create({ data: req.body });
+        res.json(vac);
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 router.delete('/vaccines/:id', async (req, res) => {
-    await Vaccine.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
+    try {
+        await prisma.vaccine.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 // --- REPORTS ---
 router.get('/reports', async (req, res) => {
-    const reports = await MedicalReport.find({ userId: req.query.userId });
-    res.json(reports);
+    try {
+        const reports = await prisma.medicalReport.findMany({
+            where: { userId: req.query.userId as string }
+        });
+        res.json(reports);
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 // --- QUEUE MANAGEMENT ---
@@ -88,7 +196,7 @@ import * as queueController from '../controllers/queueController';
 
 router.post('/queue/register', queueController.registerToken);
 router.get('/queue/doctor/:doctorId', queueController.getQueueStatus);
-router.get('/queue/analytics/:doctorId', queueController.getQueueAnalytics); // New Analytics Route
+router.get('/queue/analytics/:doctorId', queueController.getQueueAnalytics);
 router.put('/queue/token/status', queueController.updateTokenStatus);
 router.get('/queue/patient/:patientId', queueController.getPatientToken);
 
@@ -100,5 +208,14 @@ router.use('/drugs', drugRoutes);
 import dsaRoutes from './dsaRoutes';
 router.use('/dsa', dsaRoutes);
 
+// --- OOP & ANALYTICS ENHANCEMENTS ---
+import * as prescriptionController from '../controllers/prescriptionController';
+import * as analyticsController from '../controllers/analyticsController';
+
+router.post('/prescriptions', prescriptionController.createPrescription);
+router.get('/prescriptions/patient/:patientId', prescriptionController.getPatientPrescriptions);
+router.get('/prescriptions/doctor/:doctorId', prescriptionController.getDoctorPrescriptions);
+router.get('/health-metrics', analyticsController.getHealthMetrics);
+router.get('/symptom-analyze', analyticsController.analyzeSymptoms);
 
 export default router;

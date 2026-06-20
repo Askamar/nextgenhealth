@@ -1,0 +1,279 @@
+/* Custom Global Premium Styles - NextGenHealth */
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f8fafc; /* Slate 50 */
+  color: #0f172a; /* Slate 900 */
+}
+
+/* Premium Colors and Gradients */
+:root {
+  --primary-color: #0ea5e9; /* Sky 500 */
+  --primary-dark: #0284c7; /* Sky 600 */
+  --secondary-color: #14b8a6; /* Teal 500 */
+  --secondary-dark: #0d9488; /* Teal 600 */
+  --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --premium-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  --glass-bg: rgba(255, 255, 255, 0.75);
+}
+
+/* Glassmorphism Cards */
+.premium-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: var(--premium-shadow);
+  border-radius: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.premium-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+}
+
+/* Smooth Transitions & Micro-animations */
+.hover-scale {
+  transition: transform 0.2s ease;
+}
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+.hover-slide-right {
+  transition: transform 0.2s ease;
+}
+.hover-slide-right:hover {
+  transform: translateX(4px);
+}
+
+/* Custom Premium Buttons */
+.btn-premium-primary {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  color: white;
+  border: none;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  transition: all 0.2s ease;
+}
+
+.btn-premium-primary:hover {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, #0369a1 100%);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+}
+
+.btn-premium-secondary {
+  background: linear-gradient(135deg, var(--secondary-color) 0%, var(--secondary-dark) 100%);
+  color: white;
+  border: none;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  transition: all 0.2s ease;
+}
+
+.btn-premium-secondary:hover {
+  background: linear-gradient(135deg, var(--secondary-dark) 0%, #0f766e 100%);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.25);
+}
+
+/* Gradient Texts */
+.text-gradient-primary {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-secondary {
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-rainbow {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Form Styles */
+.form-control-premium {
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  padding: 0.6rem 1rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control-premium:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+  outline: 0;
+}
+
+/* Dashboard Sidebar Styling */
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: #64748b; /* Slate 500 */
+  text-decoration: none;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.sidebar-link:hover, .sidebar-link.active {
+  background-color: #f1f5f9; /* Slate 100 */
+  color: var(--primary-dark);
+}
+
+.sidebar-link.active {
+  background-color: #e0f2fe; /* Sky 100 */
+  color: var(--primary-dark);
+}
+
+/* Premium Login Mesh Background */
+.login-mesh-bg {
+  min-height: calc(100vh - 120px);
+  background: radial-gradient(circle at 10% 20%, rgba(14, 165, 233, 0.04) 0%, rgba(20, 184, 166, 0.04) 90%), #f8fafc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Glassmorphic Login Card */
+.glass-login-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.08);
+  border-radius: 1.5rem;
+  width: 100%;
+  max-width: 480px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Premium Interactive Role Quick-Access Cards */
+.role-quick-card {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  text-align: left;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.role-quick-card:hover {
+  transform: translateY(-2px);
+  background: #ffffff;
+}
+
+.role-quick-card.patient-card:hover {
+  border-color: rgba(20, 184, 166, 0.6);
+  box-shadow: 0 10px 20px -10px rgba(20, 184, 166, 0.3), 0 0 0 1px rgba(20, 184, 166, 0.2);
+}
+
+.role-quick-card.doctor-card:hover {
+  border-color: rgba(14, 165, 233, 0.6);
+  box-shadow: 0 10px 20px -10px rgba(14, 165, 233, 0.3), 0 0 0 1px rgba(14, 165, 233, 0.2);
+}
+
+.role-quick-card.admin-card:hover {
+  border-color: rgba(100, 116, 139, 0.6);
+  box-shadow: 0 10px 20px -10px rgba(100, 116, 139, 0.3), 0 0 0 1px rgba(100, 116, 139, 0.2);
+}
+
+/* Interactive Department Grid Cards */
+.dept-grid-card {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  height: 100%;
+}
+
+.dept-grid-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(14, 165, 233, 0.4);
+  box-shadow: 0 12px 24px -10px rgba(14, 165, 233, 0.15);
+}
+
+.dept-grid-card.selected {
+  border-color: var(--primary-color);
+  background: rgba(14, 165, 233, 0.05);
+  box-shadow: 0 0 0 2px var(--primary-color) inset, 0 12px 24px -10px rgba(14, 165, 233, 0.2);
+}
+
+/* Premium Time Slot Chips */
+.time-slot-chip {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  color: #475569;
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-radius: 0.75rem;
+  padding: 0.6rem 1rem;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.time-slot-chip:hover {
+  border-color: var(--primary-color);
+  background: rgba(14, 165, 233, 0.02);
+  color: var(--primary-dark);
+}
+
+.time-slot-chip.selected {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  border-color: var(--primary-dark);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+}
+
+/* Step Indicator Enhancements */
+.step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border: 2px solid #cbd5e1;
+  background: #ffffff;
+  color: #64748b;
+  transition: all 0.25s ease;
+}
+
+.step-dot.active {
+  border-color: var(--primary-color);
+  background: var(--primary-color);
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.15);
+}
+
+.step-dot.completed {
+  border-color: var(--secondary-color);
+  background: var(--secondary-color);
+  color: #ffffff;
+}

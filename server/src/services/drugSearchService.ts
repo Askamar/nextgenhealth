@@ -8,7 +8,7 @@
  */
 
 import { Trie, LRUCache } from '../utils/dataStructures';
-import { Drug, DrugInteraction } from '../models';
+import { prisma } from '../config/db';
 
 // Initialize data structures
 const drugTrie = new Trie();
@@ -29,10 +29,10 @@ export const initializeDrugSearch = async (): Promise<void> => {
         console.log('[DSA] Initializing drug search system...');
 
         // Load all drugs into Trie - O(n * m) where n = drugs, m = avg name length
-        const drugs = await Drug.find({});
+        const drugs = await prisma.drug.findMany({});
         for (const drug of drugs) {
             drugTrie.insert(drug.name.toLowerCase(), {
-                id: drug._id,
+                id: drug.id,
                 name: drug.name,
                 category: drug.category
             });
@@ -40,16 +40,21 @@ export const initializeDrugSearch = async (): Promise<void> => {
         console.log(`[DSA] Loaded ${drugs.length} drugs into Trie`);
 
         // Load all interactions into HashMap - O(n)
-        const interactions = await DrugInteraction.find({});
+        const interactions = await prisma.drugInteraction.findMany({});
         for (const interaction of interactions) {
-            // Create keys for both orderings: "aspirin+warfarin" and "warfarin+aspirin"
-            const drugs = interaction.drugs.map((d: string) => d.toLowerCase()).sort();
-            const key = drugs.join('+');
-            interactionMap.set(key, {
-                severity: interaction.severity,
-                description: interaction.description,
-                management: interaction.management
-            });
+            try {
+                // Parse drugs array from JSON string
+                const drugList = JSON.parse(interaction.drugs) as string[];
+                const sortedDrugs = drugList.map((d: string) => d.toLowerCase()).sort();
+                const key = sortedDrugs.join('+');
+                interactionMap.set(key, {
+                    severity: interaction.severity,
+                    description: interaction.description,
+                    management: interaction.management
+                });
+            } catch (jsonErr) {
+                console.error(`Failed to parse drugs for interaction ${interaction.id}:`, jsonErr);
+            }
         }
         console.log(`[DSA] Loaded ${interactions.length} interactions into HashMap`);
 
@@ -100,8 +105,8 @@ export const getDrugWithCache = async (drugName: string): Promise<any | null> =>
     console.log(`[DSA] Cache MISS for drug: ${drugName}`);
 
     // Fetch from database
-    const drug = await Drug.findOne({
-        name: { $regex: new RegExp(`^${drugName}$`, 'i') }
+    const drug = await prisma.drug.findUnique({
+        where: { name: drugName }
     });
 
     if (drug) {

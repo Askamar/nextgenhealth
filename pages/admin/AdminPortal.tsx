@@ -2,105 +2,181 @@ import React, { useState, useEffect } from 'react';
 import { getDoctorsAPI, createDoctorAPI, getStatsAPI, getAppointmentsAPI, updateAppointmentStatusAPI } from '../../services/api';
 import { User, Appointment, AppointmentStatus, Role } from '../../types';
 import { Card, Button, Badge, PageHeader } from '../../components/Components';
-import { Users, UserPlus, Activity, Calendar, Check, X, Eye } from 'lucide-react';
+import { Eye } from 'lucide-react';
 
 export const AdminDashboard = () => {
-    const [stats, setStats] = useState({ doctors: 0, patients: 0, appointments: 0 });
+    const [stats, setStats] = useState<any>({ 
+        totalDoctors: 0, 
+        totalPatients: 0, 
+        totalAppointments: 0, 
+        vaccineCoveragePercentage: 75, 
+        safetyPassRatePercentage: 98, 
+        queueSlaFulfillmentPercentage: 85 
+    });
     const [appointments, setAppointments] = useState<Appointment[]>([]);
 
     useEffect(() => {
-        getStatsAPI().then(setStats);
-        getAppointmentsAPI('admin', Role.ADMIN).then(data => setAppointments(data.slice(0, 5)));
+        getStatsAPI().then(setStats).catch(() => {});
+        getAppointmentsAPI('admin', Role.ADMIN).then(data => setAppointments(data.slice(0, 5))).catch(() => {});
     }, []);
 
     return (
-        <div className="space-y-8">
+        <div className="container-fluid py-3 d-flex flex-column gap-4 animate-fadeIn">
             <PageHeader title="Admin Dashboard" subtitle="Welcome back, Eleanor! Here's what's happening today." />
             
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                 <Card className="p-6">
-                     <p className="text-slate-500 font-medium mb-2">Total Patients</p>
-                     <p className="text-4xl font-bold text-slate-900 mb-2">{stats.patients + 1250}</p>
-                     <p className="text-sm text-green-600 font-medium">+2.5% this month</p>
-                 </Card>
-                 <Card className="p-6">
-                     <p className="text-slate-500 font-medium mb-2">Total Doctors</p>
-                     <p className="text-4xl font-bold text-slate-900 mb-2">{stats.doctors + 82}</p>
-                     <p className="text-sm text-green-600 font-medium">+1.2% this month</p>
-                 </Card>
-                 <Card className="p-6">
-                     <p className="text-slate-500 font-medium mb-2">Today's Appointments</p>
-                     <p className="text-4xl font-bold text-slate-900 mb-2">42</p>
-                     <p className="text-sm text-red-500 font-medium">-0.5% vs yesterday</p>
-                 </Card>
+            <div className="row g-3">
+                 <div className="col-12 col-md-4">
+                     <Card>
+                         <p className="text-muted small fw-semibold mb-2">Total Patients</p>
+                         <h2 className="fw-bold text-dark mb-1">{stats.totalPatients ?? stats.patients}</h2>
+                         <p className="mb-0 text-success small fw-semibold">+2.5% this month</p>
+                     </Card>
+                 </div>
+                 <div className="col-12 col-md-4">
+                     <Card>
+                         <p className="text-muted small fw-semibold mb-2">Total Doctors</p>
+                         <h2 className="fw-bold text-dark mb-1">{stats.totalDoctors ?? stats.doctors}</h2>
+                         <p className="mb-0 text-success small fw-semibold">+1.2% this month</p>
+                     </Card>
+                 </div>
+                 <div className="col-12 col-md-4">
+                     <Card>
+                         <p className="text-muted small fw-semibold mb-2">Today's Appointments</p>
+                         <h2 className="fw-bold text-dark mb-1">{stats.totalAppointments ?? stats.appointments}</h2>
+                         <p className="mb-0 text-success small fw-semibold">Live hospital throughput</p>
+                     </Card>
+                 </div>
             </div>
 
-            <div className="grid lg:grid-cols-3 gap-8">
+            {/* Quality & Safety Analytics Dashboard */}
+            <div className="row g-3">
+                <div className="col-12 col-md-4">
+                    <Card className="h-100">
+                        <p className="text-muted small fw-semibold mb-2">Prescription Safety Rating</p>
+                        <h2 className="fw-bold text-success mb-2">{stats.safetyPassRatePercentage ?? 98}%</h2>
+                        <div className="progress mb-2" style={{ height: '8px' }}>
+                            <div className="progress-bar bg-success" style={{ width: `${stats.safetyPassRatePercentage ?? 98}%` }}></div>
+                        </div>
+                        <p className="mb-0 text-muted small" style={{ fontSize: '0.8rem' }}>
+                            Percentage of prescriptions cleared with zero drug interaction warnings.
+                        </p>
+                    </Card>
+                </div>
+                <div className="col-12 col-md-4">
+                    <Card className="h-100">
+                        <p className="text-muted small fw-semibold mb-2">Vaccine Target Coverage</p>
+                        <h2 className="fw-bold text-primary mb-2">{stats.vaccineCoveragePercentage ?? 75}%</h2>
+                        <div className="progress mb-2" style={{ height: '8px' }}>
+                            <div className="progress-bar bg-primary" style={{ width: `${stats.vaccineCoveragePercentage ?? 75}%` }}></div>
+                        </div>
+                        <p className="mb-0 text-muted small" style={{ fontSize: '0.8rem' }}>
+                            Dispensed immunizations relative to target community capacity.
+                        </p>
+                    </Card>
+                </div>
+                <div className="col-12 col-md-4">
+                    <Card className="h-100">
+                        <p className="text-muted small fw-semibold mb-2">Queue SLA Fulfillment</p>
+                        <h2 className="fw-bold text-info mb-2">{stats.queueSlaFulfillmentPercentage ?? 85}%</h2>
+                        <div className="progress mb-2" style={{ height: '8px' }}>
+                            <div className="progress-bar bg-info" style={{ width: `${stats.queueSlaFulfillmentPercentage ?? 85}%` }}></div>
+                        </div>
+                        <p className="mb-0 text-muted small" style={{ fontSize: '0.8rem' }}>
+                            Patients treated within their initial token time window.
+                        </p>
+                    </Card>
+                </div>
+            </div>
+
+            <div className="row g-4">
                 {/* Visual Chart Placeholder */}
-                <Card className="lg:col-span-2 p-8">
-                    <h3 className="font-bold text-lg mb-6">Patient Registrations</h3>
-                    <div className="h-64 flex items-end justify-between gap-2">
-                        {[40, 65, 45, 80, 55, 70, 90, 60, 75, 50, 85, 95].map((h, i) => (
-                            <div key={i} className="w-full bg-primary-100 rounded-t-lg relative group">
-                                <div className="absolute bottom-0 w-full bg-primary-500 rounded-t-lg transition-all duration-1000" style={{ height: `${h}%` }}></div>
-                                <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded pointer-events-none">{h}</div>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
+                <div className="col-12 col-lg-8">
+                    <Card>
+                        <h5 className="fw-bold text-dark mb-4">Patient Registrations</h5>
+                        <div className="d-flex align-items-end justify-content-between gap-2" style={{ height: '220px' }}>
+                            {[40, 65, 45, 80, 55, 70, 90, 60, 75, 50, 85, 95].map((h, i) => (
+                                <div key={i} className="w-100 bg-primary-subtle rounded-top position-relative" style={{ height: '100%', cursor: 'pointer' }}>
+                                    <div 
+                                      className="position-absolute bottom-0 start-0 w-100 bg-primary rounded-top transition-all" 
+                                      style={{ height: `${h}%` }}
+                                    ></div>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                </div>
 
                 {/* Donut Chart / Department Distribution */}
-                <Card className="p-8">
-                    <h3 className="font-bold text-lg mb-6">Appointments by Dept</h3>
-                    <div className="flex flex-col gap-4">
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-sm"><span>Cardiology</span> <span className="font-bold">45%</span></div>
-                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-blue-500 w-[45%]"></div></div>
+                <div className="col-12 col-lg-4">
+                    <Card>
+                        <h5 className="fw-bold text-dark mb-4">Appointments by Dept</h5>
+                        <div className="d-flex flex-column gap-3">
+                            <div>
+                                <div className="d-flex justify-content-between small mb-1">
+                                    <span>Cardiology</span>
+                                    <span className="fw-bold">45%</span>
+                                </div>
+                                <div className="progress" style={{ height: '6px' }}>
+                                    <div className="progress-bar bg-primary" style={{ width: '45%' }}></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="d-flex justify-content-between small mb-1">
+                                    <span>Pediatrics</span>
+                                    <span className="fw-bold">30%</span>
+                                </div>
+                                <div className="progress" style={{ height: '6px' }}>
+                                    <div className="progress-bar bg-success" style={{ width: '30%' }}></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="d-flex justify-content-between small mb-1">
+                                    <span>Neurology</span>
+                                    <span className="fw-bold">25%</span>
+                                </div>
+                                <div className="progress" style={{ height: '6px' }}>
+                                    <div className="progress-bar bg-warning" style={{ width: '25%' }}></div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-sm"><span>Pediatrics</span> <span className="font-bold">30%</span></div>
-                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-green-500 w-[30%]"></div></div>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-sm"><span>Neurology</span> <span className="font-bold">25%</span></div>
-                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-purple-500 w-[25%]"></div></div>
-                        </div>
-                    </div>
-                </Card>
+                    </Card>
+                </div>
             </div>
 
             {/* Upcoming Appointments Table */}
-            <Card className="overflow-hidden">
-                <div className="p-6 border-b border-gray-100">
-                    <h3 className="font-bold text-lg">Upcoming Appointments</h3>
+            <div className="card border shadow-sm rounded-4 overflow-hidden bg-white">
+                <div className="card-header border-0 bg-transparent p-3">
+                    <h5 className="fw-bold text-dark mb-0">Upcoming Appointments</h5>
                 </div>
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-slate-500 font-medium">
-                        <tr>
-                            <th className="p-4 pl-6">Patient</th>
-                            <th className="p-4">Doctor</th>
-                            <th className="p-4">Time</th>
-                            <th className="p-4 pr-6 text-right">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {appointments.map(apt => (
-                            <tr key={apt.id} className="hover:bg-slate-50/50">
-                                <td className="p-4 pl-6 font-medium text-slate-900">{apt.patientName}</td>
-                                <td className="p-4 text-slate-500">{apt.doctorName}</td>
-                                <td className="p-4 text-slate-500">{apt.time}</td>
-                                <td className="p-4 pr-6 text-right">
-                                    <Badge color={
-                                        apt.status === AppointmentStatus.CONFIRMED ? 'green' : 
-                                        apt.status === AppointmentStatus.PENDING ? 'yellow' : 'gray'
-                                    }>{apt.status}</Badge>
-                                </td>
+                <div className="table-responsive">
+                    <table className="table table-hover align-middle mb-0 small">
+                        <thead className="table-light text-muted">
+                            <tr>
+                                <th className="p-3 ps-4">Patient</th>
+                                <th className="p-3">Doctor</th>
+                                <th className="p-3">Time</th>
+                                <th className="p-3 pe-4 text-end">Status</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </Card>
+                        </thead>
+                        <tbody>
+                            {appointments.map(apt => (
+                                <tr key={apt.id}>
+                                    <td className="p-3 ps-4 fw-bold text-dark">{apt.patientName}</td>
+                                    <td className="p-3 text-muted">{apt.doctorName}</td>
+                                    <td className="p-3 text-muted">{apt.time}</td>
+                                    <td className="p-3 pe-4 text-end">
+                                        <Badge color={
+                                            apt.status === AppointmentStatus.CONFIRMED ? 'green' : 
+                                            apt.status === AppointmentStatus.PENDING ? 'yellow' : 'gray'
+                                        }>{apt.status}</Badge>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     );
 };
@@ -133,54 +209,65 @@ export const ManageDoctors = () => {
     };
 
     return (
-        <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-                 <PageHeader title="Manage Doctors" subtitle="View and manage medical staff" />
-                 <Card className="overflow-hidden">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 text-slate-500 border-b border-gray-100">
-                            <tr>
-                                <th className="p-4">Name</th>
-                                <th className="p-4">Specialization</th>
-                                <th className="p-4 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {doctors.map(doc => (
-                                <tr key={doc.id} className="group hover:bg-slate-50/50">
-                                    <td className="p-4 flex items-center space-x-3">
-                                        <img src={doc.avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
-                                        <div>
-                                            <p className="font-bold text-slate-900">{doc.name}</p>
-                                            <p className="text-xs text-slate-500">{doc.email}</p>
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-slate-500">{doc.doctorDetails?.specialization}</td>
-                                    <td className="p-4 text-right">
-                                        <button className="text-slate-400 hover:text-primary-600 p-2"><Eye size={18} /></button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </Card>
-            </div>
-            
-            <div className="lg:col-span-1">
-                <Card className="p-6 sticky top-8">
-                    <h3 className="font-bold text-lg mb-6">Add New Doctor</h3>
-                    <form onSubmit={handleAdd} className="space-y-4">
-                        <div>
-                            <label className="text-sm font-medium text-slate-700 block mb-1">Full Name</label>
-                            <input className="w-full p-3 border rounded-xl bg-slate-50" placeholder="e.g. Dr. John Doe" value={newDocName} onChange={e => setNewDocName(e.target.value)} required />
+        <div className="container-fluid py-3">
+            <PageHeader title="Manage Doctors" subtitle="View and manage medical staff" />
+            <div className="row g-4 mt-1">
+                <div className="col-12 col-lg-8">
+                     <div className="card border shadow-sm rounded-4 overflow-hidden bg-white">
+                        <div className="table-responsive">
+                            <table className="table table-hover align-middle mb-0 small">
+                                <thead className="table-light text-muted">
+                                    <tr>
+                                        <th className="p-3 ps-4">Name</th>
+                                        <th className="p-3">Specialization</th>
+                                        <th className="p-3 pe-4 text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {doctors.map(doc => (
+                                        <tr key={doc.id}>
+                                            <td className="p-3 ps-4">
+                                                <div className="d-flex align-items-center gap-2">
+                                                    <img 
+                                                      src={doc.avatar || ''} 
+                                                      alt="" 
+                                                      className="rounded-circle border" 
+                                                      style={{ width: '40px', height: '40px', objectFit: 'cover' }} 
+                                                    />
+                                                    <div>
+                                                        <p className="mb-0 fw-bold text-dark">{doc.name}</p>
+                                                        <p className="mb-0 text-muted small" style={{ fontSize: '11px' }}>{doc.email}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-3 text-muted">{doc.doctorSpecialization}</td>
+                                            <td className="p-3 pe-4 text-end">
+                                                <button className="btn btn-link text-muted p-1"><Eye size={18} /></button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                        <div>
-                            <label className="text-sm font-medium text-slate-700 block mb-1">Specialization</label>
-                            <input className="w-full p-3 border rounded-xl bg-slate-50" placeholder="e.g. Cardiologist" value={newDocSpec} onChange={e => setNewDocSpec(e.target.value)} required />
-                        </div>
-                        <Button type="submit" className="w-full mt-4 bg-teal-500 hover:bg-teal-600 shadow-teal-500/20">Add Doctor</Button>
-                    </form>
-                </Card>
+                    </div>
+                </div>
+                
+                <div className="col-12 col-lg-4">
+                    <Card>
+                        <h5 className="fw-bold text-dark mb-4">Add New Doctor</h5>
+                        <form onSubmit={handleAdd} className="d-flex flex-column gap-3">
+                            <div>
+                                <label className="form-label small fw-bold text-muted">Full Name</label>
+                                <input className="form-control form-control-premium" placeholder="Dr. John Doe" value={newDocName} onChange={e => setNewDocName(e.target.value)} required />
+                            </div>
+                            <div>
+                                <label className="form-label small fw-bold text-muted">Specialization</label>
+                                <input className="form-control form-control-premium" placeholder="Cardiologist" value={newDocSpec} onChange={e => setNewDocSpec(e.target.value)} required />
+                            </div>
+                            <Button type="submit" className="w-100 mt-2 py-2">Add Doctor</Button>
+                        </form>
+                    </Card>
+                </div>
             </div>
         </div>
     );
@@ -199,61 +286,63 @@ export const AppointmentManagement = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="container-fluid py-3 d-flex flex-column gap-4">
             <PageHeader title="Appointment Management" subtitle="View, approve, or reject patient appointments." />
             
-            <Card className="overflow-hidden">
-                 <div className="p-4 border-b border-gray-100 flex gap-2 overflow-x-auto">
+            <div className="card border shadow-sm rounded-4 overflow-hidden bg-white">
+                 <div className="card-header border-0 bg-transparent p-3 d-flex gap-2 overflow-auto">
                      {['All', 'Pending', 'Approved', 'Rejected', 'Completed'].map(filter => (
-                         <button key={filter} className="px-4 py-2 rounded-full text-sm font-medium hover:bg-slate-100 transition-colors first:bg-slate-900 first:text-white">
+                         <button key={filter} className="btn btn-sm btn-outline-secondary px-3 rounded-pill">
                              {filter}
                          </button>
                      ))}
                  </div>
-                 <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-slate-500 font-medium">
-                        <tr>
-                            <th className="p-4 pl-6">Patient Name & ID</th>
-                            <th className="p-4">Assigned Doctor</th>
-                            <th className="p-4">Date & Time</th>
-                            <th className="p-4">Status</th>
-                            <th className="p-4 pr-6 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {appointments.map(apt => (
-                            <tr key={apt.id} className="hover:bg-slate-50/50">
-                                <td className="p-4 pl-6">
-                                    <p className="font-bold text-slate-900">{apt.patientName}</p>
-                                    <p className="text-xs text-slate-500">#{apt.patientId}</p>
-                                </td>
-                                <td className="p-4 text-slate-600">
-                                    {apt.doctorName} <br/> <span className="text-xs text-slate-400">{apt.department}</span>
-                                </td>
-                                <td className="p-4 text-slate-600">
-                                    {apt.date} - {apt.time}
-                                </td>
-                                <td className="p-4">
-                                    <Badge color={
-                                        apt.status === AppointmentStatus.CONFIRMED ? 'green' : 
-                                        apt.status === AppointmentStatus.PENDING ? 'yellow' : 
-                                        apt.status === AppointmentStatus.CANCELLED ? 'red' : 'gray'
-                                    }>{apt.status}</Badge>
-                                </td>
-                                <td className="p-4 pr-6 text-right space-x-2">
-                                    {apt.status === AppointmentStatus.PENDING && (
-                                        <>
-                                            <button onClick={() => handleStatus(apt.id, AppointmentStatus.CONFIRMED)} className="text-green-600 hover:bg-green-50 px-3 py-1 rounded font-medium transition-colors">Approve</button>
-                                            <button onClick={() => handleStatus(apt.id, AppointmentStatus.CANCELLED)} className="text-red-600 hover:bg-red-50 px-3 py-1 rounded font-medium transition-colors">Reject</button>
-                                        </>
-                                    )}
-                                    <button className="text-slate-500 hover:text-slate-800 font-medium">View Details</button>
-                                </td>
+                 <div className="table-responsive">
+                     <table className="table table-hover align-middle mb-0 small">
+                        <thead className="table-light text-muted">
+                            <tr>
+                                <th className="p-3 ps-4">Patient Name & ID</th>
+                                <th className="p-3">Assigned Doctor</th>
+                                <th className="p-3">Date & Time</th>
+                                <th className="p-3">Status</th>
+                                <th className="p-3 pe-4 text-end">Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                 </table>
-            </Card>
+                        </thead>
+                        <tbody>
+                            {appointments.map(apt => (
+                                <tr key={apt.id}>
+                                    <td className="p-3 ps-4">
+                                        <p className="mb-0 fw-bold text-dark">{apt.patientName}</p>
+                                        <p className="mb-0 text-muted small" style={{ fontSize: '11px' }}>#{apt.patientId}</p>
+                                    </td>
+                                    <td className="p-3 text-muted">
+                                        {apt.doctorName} <br/> <span className="small text-muted-50" style={{ fontSize: '11px' }}>{apt.department}</span>
+                                    </td>
+                                    <td className="p-3 text-muted">
+                                        {apt.date} - {apt.time}
+                                    </td>
+                                    <td className="p-3">
+                                        <Badge color={
+                                            apt.status === AppointmentStatus.CONFIRMED ? 'green' : 
+                                            apt.status === AppointmentStatus.PENDING ? 'yellow' : 
+                                            apt.status === AppointmentStatus.CANCELLED ? 'red' : 'gray'
+                                        }>{apt.status}</Badge>
+                                    </td>
+                                    <td className="p-3 pe-4 text-end">
+                                        {apt.status === AppointmentStatus.PENDING && (
+                                            <div className="d-inline-flex gap-2 me-2">
+                                                <button onClick={() => handleStatus(apt.id, AppointmentStatus.CONFIRMED)} className="btn btn-sm btn-success py-1.5 px-3">Approve</button>
+                                                <button onClick={() => handleStatus(apt.id, AppointmentStatus.CANCELLED)} className="btn btn-sm btn-danger py-1.5 px-3">Reject</button>
+                                            </div>
+                                        )}
+                                        <button className="btn btn-sm btn-link text-muted py-1.5">Details</button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                     </table>
+                 </div>
+            </div>
         </div>
     );
 }
