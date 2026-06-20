@@ -1,0 +1,156 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?  @unique
+  phone     String   @unique
+  password  String?
+  role      String   @default("PATIENT")
+  avatar    String?
+  
+  // Flattened Address fields
+  addressStreet  String?
+  addressCity    String?
+  addressState   String?
+  addressPincode String?
+
+  // Flattened Patient specific fields
+  patientId          String?   @unique
+  patientDob         String?
+  patientAge         Int?
+  patientBloodGroup  String?
+  patientGender      String?
+  patientAllergies   String?
+  patientWeight      String?
+  patientHeight      String?
+  patientLastVisit   DateTime?
+  patientGovIdType   String?
+  patientGovIdNumber String?
+
+  // Flattened Doctor specific fields
+  doctorSpecialization     String?
+  doctorQualification      String?
+  doctorExperience         Int?
+  doctorAvailability       String? // JSON array stored as string or comma-separated list
+  doctorRating             Float?
+  doctorPatients           Int?
+  doctorAvgConsultationTime Int      @default(15)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Otp {
+  id        Int      @id @default(autoincrement())
+  phone     String   @unique
+  code      String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Appointment {
+  id            String   @id @default(uuid())
+  patientId     String
+  patientName   String?
+  patientAvatar String?
+  doctorId      String
+  doctorName    String?
+  doctorAvatar  String?
+  department    String?
+  date          String?
+  time          String?
+  status        String   @default("PENDING")
+  type          String   @default("In-Person")
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Vaccine {
+  id          String   @id @default(uuid())
+  name        String
+  type        String
+  ageGroup    String
+  date        String
+  batchNumber String?
+  stock       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MedicalReport {
+  id         String   @id @default(uuid())
+  userId     String
+  title      String
+  date       String
+  doctorName String?
+  type       String
+  imageUrl   String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Token {
+  id              String    @id @default(uuid())
+  patientId       String
+  patientName     String?
+  doctorId        String
+  tokenNumber     Int
+  status          String    @default("PENDING")
+  type            String    @default("REGULAR")
+  emergencyReason String?   @db.Text
+  estimatedTime   DateTime?
+  startTime       DateTime?
+  endTime         DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Drug {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  description  String?  @db.Text
+  category     String?
+  dosageTiming String?
+  minDose      String?
+  maxDose      String?
+  sideEffects  String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model DrugInteraction {
+  id          String   @id @default(uuid())
+  drugs       String   // JSON string of drug names array
+  severity    String
+  description String   @db.Text
+  management  String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Prescription {
+  id            String   @id @default(uuid())
+  appointmentId String
+  patientId     String
+  patientName   String
+  doctorId      String
+  doctorName    String
+  department    String
+  date          String
+  medications   String   @db.Text // JSON string representing array of prescribed drugs
+  notes         String?  @db.Text
+  safetyFlagged Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

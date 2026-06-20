@@ -1,8 +1,10 @@
 import React from 'react';
 
 export const Card = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => (
-  <div className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden ${className}`}>
-    {children}
+  <div className={`card border-0 premium-card ${className}`}>
+    <div className="card-body p-4">
+      {children}
+    </div>
   </div>
 );
 
@@ -14,12 +16,12 @@ export const Button = ({
   type = 'button',
   disabled = false
 }: any) => {
-  const baseStyle = "px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2";
+  const baseStyle = "btn d-flex align-items-center justify-content-center gap-2 fw-semibold";
   const variants = {
-    primary: "bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-500/30",
-    secondary: "bg-white border border-gray-200 text-slate-700 hover:bg-gray-50",
-    danger: "bg-red-50 text-red-600 hover:bg-red-100",
-    ghost: "text-slate-600 hover:bg-slate-100"
+    primary: "btn-premium-primary text-white shadow-sm",
+    secondary: "btn-outline-secondary bg-white border text-dark",
+    danger: "btn-danger bg-danger-subtle border-0 text-danger",
+    ghost: "btn-link text-decoration-none text-secondary"
   };
 
   return (
@@ -27,7 +29,7 @@ export const Button = ({
       type={type} 
       onClick={onClick} 
       disabled={disabled}
-      className={`${baseStyle} ${variants[variant as keyof typeof variants]} ${className} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`${baseStyle} ${variants[variant as keyof typeof variants] || variants.primary} ${className}`}
     >
       {children}
     </button>
@@ -36,25 +38,25 @@ export const Button = ({
 
 export const Badge = ({ children, color = 'blue' }: { children: React.ReactNode, color?: string }) => {
   const colors: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-700',
-    green: 'bg-green-50 text-green-700',
-    yellow: 'bg-yellow-50 text-yellow-700',
-    red: 'bg-red-50 text-red-700',
-    gray: 'bg-gray-100 text-gray-700',
+    blue: 'bg-primary-subtle text-primary border border-primary-subtle',
+    green: 'bg-success-subtle text-success border border-success-subtle',
+    yellow: 'bg-warning-subtle text-warning border border-warning-subtle',
+    red: 'bg-danger-subtle text-danger border border-danger-subtle',
+    gray: 'bg-light text-dark border',
   };
   return (
-    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${colors[color] || colors.gray}`}>
+    <span className={`badge rounded-pill px-2.5 py-1 text-xs fw-semibold ${colors[color] || colors.gray}`}>
       {children}
     </span>
   );
 };
 
 export const PageHeader = ({ title, subtitle, action }: any) => (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <div>
-            <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-            {subtitle && <p className="text-slate-500 mt-1">{subtitle}</p>}
-        </div>
-        {action}
+  <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4 gap-3">
+    <div>
+      <h1 className="fs-3 fw-bold text-dark mb-1">{title}</h1>
+      {subtitle && <p className="text-muted mb-0 small">{subtitle}</p>}
     </div>
+    {action}
+  </div>
 );

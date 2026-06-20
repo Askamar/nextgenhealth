@@ -5,7 +5,7 @@ import { loginAPI, registerAPI } from '../services/api';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, role: Role) => Promise<void>;
+  login: (email: string, password: string, role: Role) => Promise<void>;
   register: (data: Partial<User>) => Promise<void>;
   logout: () => void;
 }
@@ -13,14 +13,29 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        return JSON.parse(storedUser);
+      } catch (e) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      }
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(false);
 
-  const login = async (email: string, role: Role) => {
+  const login = async (email: string, password: string, role: Role) => {
     setLoading(true);
     try {
-      const userData = await loginAPI(email, role);
+      const userData = await loginAPI(email, password, role);
       setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      if (userData.token) {
+        localStorage.setItem('token', userData.token);
+      }
     } catch (error) {
       console.error(error);
       alert("Login Failed: Use demo credentials (see login page)");
@@ -34,6 +49,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const newUser = await registerAPI(data);
       setUser(newUser);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      if (newUser.token) {
+        localStorage.setItem('token', newUser.token);
+      }
     } catch (error) {
         console.error(error);
         alert("Registration failed");
@@ -44,6 +63,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
   };
 
   return (

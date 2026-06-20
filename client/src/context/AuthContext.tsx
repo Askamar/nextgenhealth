@@ -1,12 +1,13 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Role } from '../types';
-import { loginAPI, registerAPI } from '../services/api';
+import { loginAPI, loginWithPasswordAPI, registerAPI } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, role: Role) => Promise<void>;
-  register: (data: Partial<User>) => Promise<void>;
+  login: (email: string, role: Role) => Promise<User>;
+  loginWithPassword: (identifier: string, password: string) => Promise<User>;
+  register: (data: Partial<User>) => Promise<User>;
   logout: () => void;
 }
 
@@ -16,27 +17,58 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const login = async (email: string, role: Role) => {
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error("Failed to parse stored user", e);
+        localStorage.removeItem('user');
+      }
+    }
+  }, []);
+
+  const login = async (email: string, role: Role): Promise<User> => {
     setLoading(true);
     try {
       const userData = await loginAPI(email, role);
       setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      return userData;
     } catch (error) {
       console.error(error);
-      alert("Login Failed: Use demo credentials (see login page)");
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const register = async (data: Partial<User>) => {
+  const loginWithPassword = async (identifier: string, password: string): Promise<User> => {
+    setLoading(true);
+    try {
+      const userData = await loginWithPasswordAPI(identifier, password);
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      return userData;
+    } catch (error: any) {
+      console.error(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const register = async (data: Partial<User>): Promise<User> => {
     setLoading(true);
     try {
       const newUser = await registerAPI(data);
       setUser(newUser);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      return newUser;
     } catch (error) {
-        console.error(error);
-        alert("Registration failed");
+      console.error(error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -44,10 +76,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('user');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, register }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithPassword, logout, register }}>
       {children}
     </AuthContext.Provider>
   );
