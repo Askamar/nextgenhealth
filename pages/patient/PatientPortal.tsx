@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getAppointmentsAPI, getDoctorsAPI, createAppointmentAPI, DEPARTMENTS, getMedicalReportsAPI, getNotificationsAPI, getPatientPrescriptionsAPI, getAiSymptomCheckAPI } from '../../services/api';
+import { getAppointmentsAPI, getDoctorsAPI, createAppointmentAPI, DEPARTMENTS, getMedicalReportsAPI, getNotificationsAPI, getPatientPrescriptionsAPI, getAiSymptomCheckAPI, acknowledgePrescriptionAPI } from '../../services/api';
 import { Appointment, User, AppointmentStatus, MedicalReport, Notification } from '../../types';
 import { Card, Button, Badge, PageHeader } from '../../components/Components';
 import { Calendar, Clock, MapPin, ChevronRight, Bell, FileText, Syringe, Download, CheckCircle, Search, AlertTriangle, Heart, Brain, Bone, Users, Eye, Stethoscope, Activity } from 'lucide-react';
 
 export const PatientDashboard = () => {
     const { user } = useAuth();
+    const { pathname } = useLocation();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [recentDoctors, setRecentDoctors] = useState<User[]>([]);
@@ -19,14 +20,30 @@ export const PatientDashboard = () => {
     const [scanning, setScanning] = useState(false);
     const [scannerResult, setScannerResult] = useState<any | null>(null);
 
+    const refreshPrescriptions = () => {
+        if (user) {
+            getPatientPrescriptionsAPI(user.id).then(setPrescriptions).catch(() => {});
+        }
+    };
+
     useEffect(() => {
         if (user) {
             getAppointmentsAPI(user.id, user.role).then(setAppointments).catch(() => {});
             getNotificationsAPI(user.id).then(setNotifications).catch(() => {});
             getDoctorsAPI().then(docs => setRecentDoctors(docs.slice(0, 3))).catch(() => {});
-            getPatientPrescriptionsAPI(user.id).then(setPrescriptions).catch(() => {});
+            refreshPrescriptions();
         }
     }, [user]);
+
+    const handleAcknowledgePrescription = async (id: string) => {
+        try {
+            await acknowledgePrescriptionAPI(id);
+            refreshPrescriptions();
+            alert('Prescription acknowledged successfully!');
+        } catch (err) {
+            alert('Failed to acknowledge prescription.');
+        }
+    };
 
     const upcoming = appointments.find(a => a.status === AppointmentStatus.PENDING || a.status === AppointmentStatus.CONFIRMED);
 
@@ -55,6 +72,188 @@ export const PatientDashboard = () => {
         const waitTime = position * 15; // 15 mins average
         return { position, waitTime };
     };
+
+    if (pathname === '/patient/appointments') {
+        return (
+            <div className="container-lg py-4 d-flex flex-column gap-4 animate-fadeIn">
+                <PageHeader title="My Appointments" subtitle="View and manage your upcoming and past consultations" />
+                
+                <div className="row g-4">
+                    {/* Upcoming Appointments */}
+                    <div className="col-12 col-lg-6">
+                        <Card className="p-4 h-100 bg-white">
+                            <h5 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                                <Calendar size={20} className="text-primary" /> Upcoming Appointments
+                            </h5>
+                            {appointments.filter(a => a.status === AppointmentStatus.PENDING || a.status === AppointmentStatus.CONFIRMED).length === 0 ? (
+                                <div className="text-center py-5 text-muted small italic">
+                                    No upcoming appointments found. <br />
+                                    <button 
+                                        className="btn btn-sm btn-link text-primary mt-2 fw-bold text-decoration-none"
+                                        onClick={() => window.location.hash = '#/patient/book'}
+                                    >
+                                        Book an Appointment
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="d-flex flex-column gap-3">
+                                    {appointments.filter(a => a.status === AppointmentStatus.PENDING || a.status === AppointmentStatus.CONFIRMED).map(appt => (
+                                        <div key={appt.id} className="p-3 border rounded-3 bg-light">
+                                            <div className="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <h6 className="mb-0 fw-bold text-dark">{appt.doctorName}</h6>
+                                                    <span className="text-muted small" style={{ fontSize: '11px' }}>{appt.department} • {appt.type}</span>
+                                                </div>
+                                                <Badge color={appt.status === AppointmentStatus.CONFIRMED ? 'green' : 'yellow'}>{appt.status}</Badge>
+                                            </div>
+                                            <div className="d-flex gap-3 text-muted small mt-2">
+                                                <span className="d-flex align-items-center gap-1"><Clock size={12} /> {appt.date} at {appt.time}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </Card>
+                    </div>
+
+                    {/* Past Appointments */}
+                    <div className="col-12 col-lg-6">
+                        <Card className="p-4 h-100 bg-white">
+                            <h5 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                                <CheckCircle size={20} className="text-success" /> Past Records & Visits
+                            </h5>
+                            {appointments.filter(a => a.status === AppointmentStatus.COMPLETED || a.status === AppointmentStatus.CANCELLED).length === 0 ? (
+                                <div className="text-center py-5 text-muted small italic">
+                                    No past records found.
+                                </div>
+                            ) : (
+                                <div className="d-flex flex-column gap-3" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                                    {appointments.filter(a => a.status === AppointmentStatus.COMPLETED || a.status === AppointmentStatus.CANCELLED).map(appt => {
+                                        const rx = prescriptions.find(r => r.appointmentId === appt.id);
+                                        return (
+                                            <div key={appt.id} className="p-3 border rounded-3 bg-light">
+                                                <div className="d-flex justify-content-between align-items-start mb-2">
+                                                    <div>
+                                                        <h6 className="mb-0 fw-bold text-dark">{appt.doctorName}</h6>
+                                                        <span className="text-muted small" style={{ fontSize: '11px' }}>{appt.department} • {appt.date}</span>
+                                                    </div>
+                                                    <Badge color={appt.status === AppointmentStatus.COMPLETED ? 'blue' : 'red'}>{appt.status}</Badge>
+                                                </div>
+                                                
+                                                {appt.status === AppointmentStatus.COMPLETED && rx && (
+                                                    <div className="mt-3 pt-2 border-top">
+                                                        {rx.patientAcknowledged ? (
+                                                            <div className="d-flex justify-content-between align-items-center">
+                                                                <span className="small text-success fw-bold d-flex align-items-center gap-1">
+                                                                    <FileText size={12} /> Rx Acknowledged
+                                                                </span>
+                                                                <button 
+                                                                    onClick={() => setSelectedPrescription(rx)}
+                                                                    className="btn btn-sm btn-outline-primary py-1 px-3 small rounded-pill fw-bold"
+                                                                >
+                                                                    View Rx
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="badge rounded-pill bg-warning-subtle text-warning-emphasis border border-warning border-opacity-20 px-3 py-1.5 small fw-bold">
+                                                                ⏳ Acknowledgment Pending (View on Dashboard)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </Card>
+                    </div>
+                </div>
+                
+                {/* Printable Rx Modal */}
+                {selectedPrescription && (
+                    <div className="modal fade show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+                        <div className="modal-dialog modal-md modal-dialog-centered">
+                            <div className="modal-content border-0 rounded-4 shadow overflow-hidden">
+                                <div className="modal-header bg-light border-bottom-0 p-3">
+                                    <h5 className="modal-title fw-bold text-dark">Digital E-Prescription</h5>
+                                    <button type="button" className="btn-close" onClick={() => setSelectedPrescription(null)}></button>
+                                </div>
+                                <div className="modal-body p-4" id="printable-rx-area">
+                                    <div className="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
+                                        <div>
+                                            <h4 className="fw-bold text-dark mb-1">MediCore Clinics</h4>
+                                            <p className="mb-0 text-muted small" style={{ fontSize: '11px' }}>102 Health Avenue, Metro City</p>
+                                        </div>
+                                        <div className="text-end">
+                                            <h5 className="fw-bold text-primary mb-0">Rx Receipt</h5>
+                                            <p className="mb-0 text-muted small" style={{ fontSize: '11px' }}>Date: {selectedPrescription.date}</p>
+                                        </div>
+                                    </div>
+                                    <div className="row g-2 mb-4 small">
+                                        <div className="col-6">
+                                            <span className="text-muted">Doctor:</span> <strong className="text-dark">Dr. {selectedPrescription.doctorName}</strong> <br/>
+                                            <span className="text-muted">Dept:</span> <span className="text-dark">{selectedPrescription.department}</span>
+                                        </div>
+                                        <div className="col-6 text-end">
+                                            <span className="text-muted">Patient:</span> <strong className="text-dark">{selectedPrescription.patientName}</strong> <br/>
+                                            <span className="text-muted">ID:</span> <span className="text-dark">#P-{selectedPrescription.patientId.slice(-4)}</span>
+                                        </div>
+                                    </div>
+
+                                    <table className="table table-sm border align-middle mb-4 small">
+                                        <thead className="table-light">
+                                            <tr>
+                                                <th>Medication Name</th>
+                                                <th>Dosage</th>
+                                                <th>Freq / Timing</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {selectedPrescription.medications.map((med: any, i: number) => (
+                                                <tr key={i}>
+                                                    <td className="fw-bold text-dark">{med.name}</td>
+                                                    <td>{med.dose}</td>
+                                                    <td>{med.frequency} ({med.timing})</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+
+                                    {selectedPrescription.notes && (
+                                        <div className="bg-light p-3 border rounded text-muted small mb-4">
+                                            <span className="fw-bold text-dark d-block mb-1">Doctor Remarks:</span>
+                                            {selectedPrescription.notes}
+                                        </div>
+                                    )}
+
+                                    <div className="d-flex justify-content-between align-items-end pt-3 border-top">
+                                        <div className="small text-muted" style={{ fontSize: '10px' }}>
+                                            {selectedPrescription.safetyFlagged ? (
+                                                <span className="text-danger">⚠️ Bypassed Safety Checks</span>
+                                            ) : (
+                                                <span className="text-success">✔ Safety Checked & Approved</span>
+                                            )}
+                                        </div>
+                                        <div className="text-center" style={{ width: '120px' }}>
+                                            <div className="border-bottom pb-1" style={{ height: '30px', borderStyle: 'dashed' }}>
+                                                <span className="font-monospace text-muted small" style={{ fontSize: '10px' }}>Digitally Signed</span>
+                                            </div>
+                                            <span className="text-muted small" style={{ fontSize: '9px' }}>Authorized Signature</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="modal-footer border-top-0 p-3 bg-light">
+                                    <Button variant="secondary" onClick={() => setSelectedPrescription(null)}>Close</Button>
+                                    <Button onClick={() => window.print()} className="btn-primary">Print Rx</Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div className="container-lg py-4 d-flex flex-column gap-4">
@@ -238,30 +437,49 @@ export const PatientDashboard = () => {
                 <div className="col-12 col-lg-4 d-flex flex-column gap-4">
                     {/* Active E-Prescriptions */}
                     <Card>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                            <h5 className="fw-bold text-dark mb-0">Active E-Prescriptions</h5>
-                            <span className="badge rounded-pill bg-success-subtle text-success">{prescriptions.length} Records</span>
-                        </div>
-                        {prescriptions.length === 0 ? (
-                            <p className="text-muted small text-center py-3 mb-0">No active digital prescriptions found.</p>
-                        ) : (
-                            <div className="d-flex flex-column gap-2">
-                                {prescriptions.map(rx => (
-                                    <div key={rx.id} className="p-2 border rounded bg-light hover-scale d-flex align-items-center justify-content-between">
-                                        <div className="text-truncate" style={{ maxWidth: '70%' }}>
-                                            <p className="mb-0 small fw-bold text-dark text-truncate">Dr. {rx.doctorName}</p>
-                                            <p className="mb-0 text-muted" style={{ fontSize: '11px' }}>{rx.date} • {rx.department}</p>
-                                        </div>
-                                        <button 
-                                            onClick={() => setSelectedPrescription(rx)}
-                                            className="btn btn-sm btn-outline-primary py-1 px-2.5 small"
-                                        >
-                                            View Rx
-                                        </button>
+                        {(() => {
+                            const activePrescriptions = prescriptions.filter(rx => !rx.patientAcknowledged);
+                            return (
+                                <>
+                                    <div className="d-flex justify-content-between align-items-center mb-3">
+                                        <h5 className="fw-bold text-dark mb-0">Active E-Prescriptions</h5>
+                                        <span className="badge rounded-pill bg-success-subtle text-success">{activePrescriptions.length} Records</span>
                                     </div>
-                                ))}
-                            </div>
-                        )}
+                                    {activePrescriptions.length === 0 ? (
+                                        <p className="text-muted small text-center py-3 mb-0">No active digital prescriptions found.</p>
+                                    ) : (
+                                        <div className="d-flex flex-column gap-2">
+                                            {activePrescriptions.map(rx => (
+                                                <div key={rx.id} className="p-3 border rounded bg-light hover-scale d-flex flex-column gap-2">
+                                                    <div className="d-flex justify-content-between align-items-start">
+                                                        <div className="text-truncate" style={{ maxWidth: '80%' }}>
+                                                            <p className="mb-0 small fw-bold text-dark text-truncate">Dr. {rx.doctorName}</p>
+                                                            <p className="mb-0 text-muted" style={{ fontSize: '11px' }}>{rx.date} • {rx.department}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="d-flex gap-2 mt-1">
+                                                        <button 
+                                                            onClick={() => setSelectedPrescription(rx)}
+                                                            className="btn btn-xs btn-outline-primary py-1 px-2.5 small flex-grow-1"
+                                                            style={{ fontSize: '11px' }}
+                                                        >
+                                                            View Rx
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleAcknowledgePrescription(rx.id)}
+                                                            className="btn btn-xs btn-success text-white py-1 px-2.5 small d-flex align-items-center justify-content-center gap-1 flex-grow-1"
+                                                            style={{ fontSize: '11px' }}
+                                                        >
+                                                            <CheckCircle size={12} /> Acknowledge
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </Card>
 
                     {/* Notifications */}

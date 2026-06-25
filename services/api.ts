@@ -166,6 +166,10 @@ const MockAPI = {
             doc.doctorEditRequest = false;
         }
         return { success: true };
+    },
+    acknowledgePrescription: async (id: string) => {
+        await delay(500);
+        return { success: true };
     }
 };
 
@@ -205,7 +209,8 @@ const RealAPI = {
     checkDrugInteractions: (drugs: string[]) => fetchAPI('/dsa/drug/interactions', { method: 'POST', body: JSON.stringify({ drugs }) }),
     updateDoctor: (id: string, data: any) => fetchAPI(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     requestDoctorEditPermission: (id: string) => fetchAPI(`/users/${id}/request-edit`, { method: 'PUT' }),
-    grantDoctorEditPermission: (id: string, allowed: boolean) => fetchAPI(`/users/${id}/grant-edit`, { method: 'PUT', body: JSON.stringify({ allowed }) })
+    grantDoctorEditPermission: (id: string, allowed: boolean) => fetchAPI(`/users/${id}/grant-edit`, { method: 'PUT', body: JSON.stringify({ allowed }) }),
+    acknowledgePrescription: (id: string) => fetchAPI(`/prescriptions/${id}/acknowledge`, { method: 'PUT' })
 };
 
 // Export based on flag
@@ -242,3 +247,4 @@ export const checkDrugInteractionsAPI = USE_MOCK_DATA ? MockAPI.checkDrugInterac
 export const updateDoctorAPI = USE_MOCK_DATA ? MockAPI.updateDoctor : RealAPI.updateDoctor;
 export const requestDoctorEditPermissionAPI = USE_MOCK_DATA ? MockAPI.requestDoctorEditPermission : RealAPI.requestDoctorEditPermission;
 export const grantDoctorEditPermissionAPI = USE_MOCK_DATA ? MockAPI.grantDoctorEditPermission : RealAPI.grantDoctorEditPermission;
+export const acknowledgePrescriptionAPI = USE_MOCK_DATA ? MockAPI.acknowledgePrescription : RealAPI.acknowledgePrescription;

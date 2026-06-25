@@ -154,6 +154,7 @@ model Prescription {
   medications   String   @db.Text // JSON string representing array of prescribed drugs
   notes         String?  @db.Text
   safetyFlagged Boolean  @default(false)
+  patientAcknowledged Boolean @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

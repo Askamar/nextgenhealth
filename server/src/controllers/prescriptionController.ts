@@ -106,3 +106,25 @@ export const getDoctorPrescriptions = async (req: Request, res: Response) => {
         res.status(500).json({ message: err.message });
     }
 };
+
+/**
+ * Marks a prescription as acknowledged by the patient.
+ */
+export const acknowledgePrescription = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const updated = await prisma.prescription.update({
+            where: { id },
+            data: { patientAcknowledged: true }
+        });
+        
+        const formatted = {
+            ...updated,
+            medications: JSON.parse(updated.medications)
+        };
+        
+        res.json({ success: true, prescription: formatted });
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
+};

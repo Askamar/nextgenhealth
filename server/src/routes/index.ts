@@ -283,6 +283,7 @@ import * as analyticsController from '../controllers/analyticsController';
 router.post('/prescriptions', prescriptionController.createPrescription);
 router.get('/prescriptions/patient/:patientId', prescriptionController.getPatientPrescriptions);
 router.get('/prescriptions/doctor/:doctorId', prescriptionController.getDoctorPrescriptions);
+router.put('/prescriptions/:id/acknowledge', prescriptionController.acknowledgePrescription);
 router.get('/health-metrics', analyticsController.getHealthMetrics);
 router.get('/symptom-analyze', analyticsController.analyzeSymptoms);
 
