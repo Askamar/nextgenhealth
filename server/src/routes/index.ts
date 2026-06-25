@@ -1,6 +1,7 @@
 import express from 'express';
 import * as authController from '../controllers/authController';
 import { prisma } from '../config/db';
+import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 
@@ -27,9 +28,20 @@ router.get('/users', async (req, res) => {
 router.post('/users', async (req, res) => {
     try {
         const { address, patientDetails, doctorDetails, ...rest } = req.body;
+        
+        let hashedPassword = rest.password || null;
+        if (rest.password) {
+            hashedPassword = await bcrypt.hash(rest.password, 10);
+        }
+
+        const phone = rest.phone || `+1${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+
         const user = await prisma.user.create({
             data: {
                 ...rest,
+                password: hashedPassword,
+                phone,
+                gender: rest.gender || null,
                 addressStreet: address?.street || null,
                 addressCity: address?.city || null,
                 addressState: address?.state || null,
@@ -64,6 +76,12 @@ router.put('/users/:id', async (req, res) => {
     try {
         const { address, patientDetails, doctorDetails, ...rest } = req.body;
         const data: any = { ...rest };
+        
+        if (rest.password) {
+            data.password = await bcrypt.hash(rest.password, 10);
+        } else {
+            delete data.password;
+        }
         
         if (address) {
             if (address.street !== undefined) data.addressStreet = address.street;

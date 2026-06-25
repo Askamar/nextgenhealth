@@ -588,6 +588,10 @@ export const DoctorSchedule = () => {
 
 export const DoctorProfile = () => {
     const { user } = useAuth();
+    const [name, setName] = useState(user?.name || '');
+    const [email, setEmail] = useState(user?.email || '');
+    const [gender, setGender] = useState(user?.gender || 'Male');
+    const [password, setPassword] = useState('');
     const [specialization, setSpecialization] = useState(user?.doctorSpecialization || '');
     const [qualification, setQualification] = useState(user?.doctorQualification || '');
     const [experience, setExperience] = useState(user?.doctorExperience || 5);
@@ -602,13 +606,25 @@ export const DoctorProfile = () => {
         setSaveMessage('');
         
         try {
-            await updateDoctorAPI(user.id, {
-                specialization,
-                qualification,
-                experience: Number(experience),
-                avgConsultationTime: Number(avgConsultationTime)
-            });
-            setSaveMessage('Profile saved successfully! Reload the page to sync credentials.');
+            const payload: any = {
+                name,
+                email,
+                gender,
+                doctorDetails: {
+                    specialization,
+                    qualification,
+                    experience: Number(experience),
+                    avgConsultationTime: Number(avgConsultationTime)
+                }
+            };
+            
+            if (password) {
+                payload.password = password;
+            }
+
+            await updateDoctorAPI(user.id, payload);
+            setSaveMessage('Profile saved successfully! Please sign out and log back in to sync details.');
+            setPassword('');
         } catch (error) {
             setSaveMessage('Failed to save profile details.');
         } finally {
@@ -642,6 +658,10 @@ export const DoctorProfile = () => {
                                 <span className="fw-bold text-dark font-monospace">#{user?.id.slice(-6)}</span>
                             </div>
                             <div className="d-flex justify-content-between small">
+                                <span className="text-muted">Gender</span>
+                                <span className="fw-bold text-dark">{user?.gender || 'Not specified'}</span>
+                            </div>
+                            <div className="d-flex justify-content-between small">
                                 <span className="text-muted">Contact Phone</span>
                                 <span className="fw-bold text-dark">{user?.phone}</span>
                             </div>
@@ -662,53 +682,102 @@ export const DoctorProfile = () => {
                     <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
                         <h5 className="fw-bold text-dark mb-4 d-flex align-items-center gap-2">
                             <FileText size={18} className="text-primary" />
-                            Professional Credentials
+                            Profile Details
                         </h5>
                         
-                        <form onSubmit={handleSave} className="d-flex flex-column gap-3">
-                            <div className="row g-3">
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label small fw-bold text-muted mb-1">Medical Specialization</label>
-                                    <input 
-                                        type="text" 
-                                        className="form-control form-control-premium" 
-                                        value={specialization} 
-                                        onChange={e => setSpecialization(e.target.value)} 
-                                        required
-                                    />
+                        <form onSubmit={handleSave} className="d-flex flex-column gap-4">
+                            <div>
+                                <h6 className="fw-bold text-secondary mb-3 small text-uppercase" style={{ letterSpacing: '0.5px' }}>Personal Info & Security</h6>
+                                <div className="row g-3">
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label small fw-bold text-muted mb-1">Full Name</label>
+                                        <input 
+                                            type="text" 
+                                            className="form-control form-control-premium" 
+                                            value={name} 
+                                            onChange={e => setName(e.target.value)} 
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label small fw-bold text-muted mb-1">Email Address</label>
+                                        <input 
+                                            type="email" 
+                                            className="form-control form-control-premium" 
+                                            value={email} 
+                                            onChange={e => setEmail(e.target.value)} 
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label small fw-bold text-muted mb-1">Gender</label>
+                                        <select className="form-select form-control-premium" value={gender} onChange={e => setGender(e.target.value)}>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label small fw-bold text-muted mb-1">Change Password (leave blank to keep current)</label>
+                                        <input 
+                                            type="password" 
+                                            className="form-control form-control-premium" 
+                                            placeholder="Enter new password" 
+                                            value={password} 
+                                            onChange={e => setPassword(e.target.value)} 
+                                        />
+                                    </div>
                                 </div>
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label small fw-bold text-muted mb-1">Qualifications (degrees)</label>
-                                    <input 
-                                        type="text" 
-                                        className="form-control form-control-premium" 
-                                        value={qualification} 
-                                        onChange={e => setQualification(e.target.value)} 
-                                        required
-                                    />
-                                </div>
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label small fw-bold text-muted mb-1">Years of Experience</label>
-                                    <input 
-                                        type="number" 
-                                        className="form-control form-control-premium" 
-                                        value={experience} 
-                                        onChange={e => setExperience(Number(e.target.value))} 
-                                        min={1}
-                                        required
-                                    />
-                                </div>
-                                <div className="col-12 col-md-6">
-                                    <label className="form-label small fw-bold text-muted mb-1">Average Consultation Time (mins)</label>
-                                    <input 
-                                        type="number" 
-                                        className="form-control form-control-premium" 
-                                        value={avgConsultationTime} 
-                                        onChange={e => setAvgConsultationTime(Number(e.target.value))} 
-                                        min={5}
-                                        max={60}
-                                        required
-                                    />
+                            </div>
+
+                            <hr className="my-1 text-muted opacity-25" />
+
+                            <div>
+                                <h6 className="fw-bold text-secondary mb-3 small text-uppercase" style={{ letterSpacing: '0.5px' }}>Professional Credentials</h6>
+                                <div className="row g-3">
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label small fw-bold text-muted mb-1">Medical Specialization</label>
+                                        <input 
+                                            type="text" 
+                                            className="form-control form-control-premium" 
+                                            value={specialization} 
+                                            onChange={e => setSpecialization(e.target.value)} 
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label small fw-bold text-muted mb-1">Qualifications (degrees)</label>
+                                        <input 
+                                            type="text" 
+                                            className="form-control form-control-premium" 
+                                            value={qualification} 
+                                            onChange={e => setQualification(e.target.value)} 
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label small fw-bold text-muted mb-1">Years of Experience</label>
+                                        <input 
+                                            type="number" 
+                                            className="form-control form-control-premium" 
+                                            value={experience} 
+                                            onChange={e => setExperience(Number(e.target.value))} 
+                                            min={0}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-6">
+                                        <label className="form-label small fw-bold text-muted mb-1">Average Consultation Time (mins)</label>
+                                        <input 
+                                            type="number" 
+                                            className="form-control form-control-premium" 
+                                            value={avgConsultationTime} 
+                                            onChange={e => setAvgConsultationTime(Number(e.target.value))} 
+                                            min={5}
+                                            max={60}
+                                            required
+                                        />
+                                    </div>
                                 </div>
                             </div>
                             
@@ -718,7 +787,7 @@ export const DoctorProfile = () => {
                                 </div>
                             )}
 
-                            <div className="d-flex justify-content-end gap-2 mt-3">
+                            <div className="d-flex justify-content-end gap-2 mt-2">
                                 <Button type="submit" disabled={saving} className="btn-premium-primary px-4 py-2.5 d-flex align-items-center gap-1.5">
                                     {saving ? 'Saving...' : 'Save Profile Changes'}
                                 </Button>

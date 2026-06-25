@@ -185,7 +185,7 @@ const RealAPI = {
     getAiSymptomCheck: (query: string) => fetchAPI(`/symptom-analyze?query=${encodeURIComponent(query)}`),
     getDrugAutocomplete: (query: string) => fetchAPI(`/dsa/drug/autocomplete?q=${encodeURIComponent(query)}`),
     checkDrugInteractions: (drugs: string[]) => fetchAPI('/dsa/drug/interactions', { method: 'POST', body: JSON.stringify({ drugs }) }),
-    updateDoctor: (id: string, data: any) => fetchAPI(`/users/${id}`, { method: 'PUT', body: JSON.stringify({ doctorDetails: data }) })
+    updateDoctor: (id: string, data: any) => fetchAPI(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 };
 
 // Export based on flag

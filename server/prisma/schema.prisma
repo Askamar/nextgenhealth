@@ -15,6 +15,7 @@ model User {
   password  String?
   role      String   @default("PATIENT")
   avatar    String?
+  gender    String?  // General gender (Male/Female/Other)
   
   // Flattened Address fields
   addressStreet  String?

@@ -184,7 +184,10 @@ export const AdminDashboard = () => {
 export const ManageDoctors = () => {
     const [doctors, setDoctors] = useState<User[]>([]);
     const [newDocName, setNewDocName] = useState('');
-    const [newDocSpec, setNewDocSpec] = useState('');
+    const [newDocEmail, setNewDocEmail] = useState('');
+    const [newDocGender, setNewDocGender] = useState('Male');
+    const [newDocPassword, setNewDocPassword] = useState('');
+    const [newDocSpec, setNewDocSpec] = useState('General Medicine');
 
     useEffect(() => {
         getDoctorsAPI().then(setDoctors);
@@ -192,20 +195,41 @@ export const ManageDoctors = () => {
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
-        const doc = await createDoctorAPI({
-            name: newDocName,
-            email: `${newDocName.toLowerCase().replace(' ', '.')}@medi.com`,
-            doctorDetails: {
-                specialization: newDocSpec,
-                qualification: 'MBBS',
-                experience: 0,
-                availability: ['Mon', 'Tue']
-            },
-            avatar: `https://ui-avatars.com/api/?name=${newDocName}`
-        });
-        setDoctors([...doctors, doc]);
-        setNewDocName('');
-        setNewDocSpec('');
+        
+        let avatarUrl = '';
+        if (newDocGender === 'Female') {
+            avatarUrl = 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300';
+        } else if (newDocGender === 'Male') {
+            avatarUrl = 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=300';
+        } else {
+            avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(newDocName)}`;
+        }
+
+        try {
+            const doc = await createDoctorAPI({
+                name: newDocName,
+                email: newDocEmail,
+                gender: newDocGender,
+                password: newDocPassword,
+                doctorDetails: {
+                    specialization: newDocSpec,
+                    qualification: 'MBBS, MD',
+                    experience: 5,
+                    availability: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+                },
+                avatar: avatarUrl
+            });
+            
+            setDoctors([...doctors, doc]);
+            setNewDocName('');
+            setNewDocEmail('');
+            setNewDocGender('Male');
+            setNewDocPassword('');
+            setNewDocSpec('General Medicine');
+            alert('Doctor added successfully!');
+        } catch (err) {
+            alert('Failed to add doctor. The email address might already be registered.');
+        }
     };
 
     return (
@@ -261,8 +285,31 @@ export const ManageDoctors = () => {
                                 <input className="form-control form-control-premium" placeholder="Dr. John Doe" value={newDocName} onChange={e => setNewDocName(e.target.value)} required />
                             </div>
                             <div>
+                                <label className="form-label small fw-bold text-muted">Email Address</label>
+                                <input type="email" className="form-control form-control-premium" placeholder="john.doe@medicore.com" value={newDocEmail} onChange={e => setNewDocEmail(e.target.value)} required />
+                            </div>
+                            <div>
+                                <label className="form-label small fw-bold text-muted">Gender</label>
+                                <select className="form-select form-control-premium" value={newDocGender} onChange={e => setNewDocGender(e.target.value)}>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="form-label small fw-bold text-muted">Temporary Password</label>
+                                <input type="text" className="form-control form-control-premium" placeholder="Temp password for login" value={newDocPassword} onChange={e => setNewDocPassword(e.target.value)} required />
+                            </div>
+                            <div>
                                 <label className="form-label small fw-bold text-muted">Specialization</label>
-                                <input className="form-control form-control-premium" placeholder="Cardiologist" value={newDocSpec} onChange={e => setNewDocSpec(e.target.value)} required />
+                                <select className="form-select form-control-premium" value={newDocSpec} onChange={e => setNewDocSpec(e.target.value)}>
+                                    <option value="Cardiology">Cardiology</option>
+                                    <option value="Pediatrics">Pediatrics</option>
+                                    <option value="Neurology">Neurology</option>
+                                    <option value="Orthopedics">Orthopedics</option>
+                                    <option value="Dermatology">Dermatology</option>
+                                    <option value="General Medicine">General Medicine</option>
+                                </select>
                             </div>
                             <Button type="submit" className="w-100 mt-2 py-2">Add Doctor</Button>
                         </form>
