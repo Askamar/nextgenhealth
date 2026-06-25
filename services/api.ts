@@ -148,6 +148,24 @@ const MockAPI = {
     updateDoctor: async (id: string, data: any) => {
         await delay(500);
         return { id, ...data };
+    },
+    requestDoctorEditPermission: async (id: string) => {
+        await delay(500);
+        const doc = USERS.find(u => u.id === id);
+        if (doc) {
+            doc.doctorEditRequest = true;
+            doc.doctorEditPermission = false;
+        }
+        return { success: true };
+    },
+    grantDoctorEditPermission: async (id: string, allowed: boolean) => {
+        await delay(500);
+        const doc = USERS.find(u => u.id === id);
+        if (doc) {
+            doc.doctorEditPermission = allowed;
+            doc.doctorEditRequest = false;
+        }
+        return { success: true };
     }
 };
 
@@ -185,7 +203,9 @@ const RealAPI = {
     getAiSymptomCheck: (query: string) => fetchAPI(`/symptom-analyze?query=${encodeURIComponent(query)}`),
     getDrugAutocomplete: (query: string) => fetchAPI(`/dsa/drug/autocomplete?q=${encodeURIComponent(query)}`),
     checkDrugInteractions: (drugs: string[]) => fetchAPI('/dsa/drug/interactions', { method: 'POST', body: JSON.stringify({ drugs }) }),
-    updateDoctor: (id: string, data: any) => fetchAPI(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+    updateDoctor: (id: string, data: any) => fetchAPI(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    requestDoctorEditPermission: (id: string) => fetchAPI(`/users/${id}/request-edit`, { method: 'PUT' }),
+    grantDoctorEditPermission: (id: string, allowed: boolean) => fetchAPI(`/users/${id}/grant-edit`, { method: 'PUT', body: JSON.stringify({ allowed }) })
 };
 
 // Export based on flag
@@ -220,3 +240,5 @@ export const getAiSymptomCheckAPI = USE_MOCK_DATA ? MockAPI.getAiSymptomCheck : 
 export const getDrugAutocompleteAPI = USE_MOCK_DATA ? MockAPI.getDrugAutocomplete : RealAPI.getDrugAutocomplete;
 export const checkDrugInteractionsAPI = USE_MOCK_DATA ? MockAPI.checkDrugInteractions : RealAPI.checkDrugInteractions;
 export const updateDoctorAPI = USE_MOCK_DATA ? MockAPI.updateDoctor : RealAPI.updateDoctor;
+export const requestDoctorEditPermissionAPI = USE_MOCK_DATA ? MockAPI.requestDoctorEditPermission : RealAPI.requestDoctorEditPermission;
+export const grantDoctorEditPermissionAPI = USE_MOCK_DATA ? MockAPI.grantDoctorEditPermission : RealAPI.grantDoctorEditPermission;

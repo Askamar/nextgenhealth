@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDoctorsAPI, createDoctorAPI, getStatsAPI, getAppointmentsAPI, updateAppointmentStatusAPI } from '../../services/api';
+import { getDoctorsAPI, createDoctorAPI, getStatsAPI, getAppointmentsAPI, updateAppointmentStatusAPI, grantDoctorEditPermissionAPI } from '../../services/api';
 import { User, Appointment, AppointmentStatus, Role } from '../../types';
 import { Card, Button, Badge, PageHeader } from '../../components/Components';
 import { Eye } from 'lucide-react';
@@ -232,6 +232,17 @@ export const ManageDoctors = () => {
         }
     };
 
+    const handleGrantEdit = async (docId: string, allowed: boolean) => {
+        try {
+            await grantDoctorEditPermissionAPI(docId, allowed);
+            const docs = await getDoctorsAPI();
+            setDoctors(docs);
+            alert(allowed ? 'Edit permission granted successfully.' : 'Edit request denied / revoked.');
+        } catch (err) {
+            alert('Failed to update doctor permission.');
+        }
+    };
+
     return (
         <div className="container-fluid py-3">
             <PageHeader title="Manage Doctors" subtitle="View and manage medical staff" />
@@ -244,6 +255,7 @@ export const ManageDoctors = () => {
                                     <tr>
                                         <th className="p-3 ps-4">Name</th>
                                         <th className="p-3">Specialization</th>
+                                        <th className="p-3">Profile Edit Access</th>
                                         <th className="p-3 pe-4 text-end">Actions</th>
                                     </tr>
                                 </thead>
@@ -265,6 +277,40 @@ export const ManageDoctors = () => {
                                                 </div>
                                             </td>
                                             <td className="p-3 text-muted">{doc.doctorSpecialization}</td>
+                                            <td className="p-3">
+                                                {doc.doctorEditRequest ? (
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <span className="badge rounded-pill bg-warning-subtle text-warning border border-warning border-opacity-20 px-2.5 py-1">⏳ Requesting Edit</span>
+                                                        <button 
+                                                            onClick={() => handleGrantEdit(doc.id, true)} 
+                                                            className="btn btn-success py-0.5 px-2 rounded text-white border-0 fw-bold"
+                                                            style={{ fontSize: '11px', padding: '2px 8px' }}
+                                                        >
+                                                            Allow
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleGrantEdit(doc.id, false)} 
+                                                            className="btn btn-danger py-0.5 px-2 rounded text-white border-0 fw-bold"
+                                                            style={{ fontSize: '11px', padding: '2px 8px' }}
+                                                        >
+                                                            Deny
+                                                        </button>
+                                                    </div>
+                                                ) : doc.doctorEditPermission ? (
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <span className="badge rounded-pill bg-success-subtle text-success border border-success border-opacity-20 px-2.5 py-1">✔ Unlocked</span>
+                                                        <button 
+                                                            onClick={() => handleGrantEdit(doc.id, false)} 
+                                                            className="btn btn-secondary py-0.5 px-2 rounded text-white border-0 fw-bold"
+                                                            style={{ fontSize: '11px', padding: '2px 8px' }}
+                                                        >
+                                                            Lock
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="badge rounded-pill bg-light text-muted border px-2.5 py-1">🔒 Locked</span>
+                                                )}
+                                            </td>
                                             <td className="p-3 pe-4 text-end">
                                                 <button className="btn btn-link text-muted p-1"><Eye size={18} /></button>
                                             </td>

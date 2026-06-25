@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { getAppointmentsAPI, updateAppointmentStatusAPI, getDrugAutocompleteAPI, checkDrugInteractionsAPI, createPrescriptionAPI, updateDoctorAPI } from '../../services/api';
-import { Appointment, AppointmentStatus } from '../../types';
+import { getAppointmentsAPI, updateAppointmentStatusAPI, getDrugAutocompleteAPI, checkDrugInteractionsAPI, createPrescriptionAPI, updateDoctorAPI, requestDoctorEditPermissionAPI, getDoctorsAPI } from '../../services/api';
+import { Appointment, AppointmentStatus, User } from '../../types';
 import { Card, Button, Badge } from '../../components/Components';
 import { Calendar, Clock, CheckCircle, Activity, FileText, AlertTriangle, Search, Plus, Trash2 } from 'lucide-react';
 
@@ -588,16 +588,50 @@ export const DoctorSchedule = () => {
 
 export const DoctorProfile = () => {
     const { user } = useAuth();
-    const [name, setName] = useState(user?.name || '');
-    const [email, setEmail] = useState(user?.email || '');
-    const [gender, setGender] = useState(user?.gender || 'Male');
+    const [localUser, setLocalUser] = useState<User | null>(null);
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [gender, setGender] = useState('Male');
     const [password, setPassword] = useState('');
-    const [specialization, setSpecialization] = useState(user?.doctorSpecialization || '');
-    const [qualification, setQualification] = useState(user?.doctorQualification || '');
-    const [experience, setExperience] = useState(user?.doctorExperience || 5);
-    const [avgConsultationTime, setAvgConsultationTime] = useState(user?.doctorAvgConsultationTime || 15);
+    const [specialization, setSpecialization] = useState('');
+    const [qualification, setQualification] = useState('');
+    const [experience, setExperience] = useState(5);
+    const [avgConsultationTime, setAvgConsultationTime] = useState(15);
     const [saving, setSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState('');
+
+    const refreshProfile = () => {
+        if (user) {
+            getDoctorsAPI().then(docs => {
+                const me = docs.find(d => d.id === user.id);
+                if (me) {
+                    setLocalUser(me);
+                    setName(me.name || '');
+                    setEmail(me.email || '');
+                    setGender(me.gender || 'Male');
+                    setSpecialization(me.doctorSpecialization || '');
+                    setQualification(me.doctorQualification || '');
+                    setExperience(me.doctorExperience || 5);
+                    setAvgConsultationTime(me.doctorAvgConsultationTime || 15);
+                }
+            }).catch(() => {});
+        }
+    };
+
+    useEffect(() => {
+        refreshProfile();
+    }, [user]);
+
+    const handleRequestEdit = async () => {
+        if (!user) return;
+        try {
+            await requestDoctorEditPermissionAPI(user.id);
+            alert('Your request for edit permission has been sent to the Admin.');
+            refreshProfile();
+        } catch (err) {
+            alert('Failed to request edit permission.');
+        }
+    };
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -608,7 +642,6 @@ export const DoctorProfile = () => {
         try {
             const payload: any = {
                 name,
-                email,
                 gender,
                 doctorDetails: {
                     specialization,
@@ -623,14 +656,17 @@ export const DoctorProfile = () => {
             }
 
             await updateDoctorAPI(user.id, payload);
-            setSaveMessage('Profile saved successfully! Please sign out and log back in to sync details.');
+            setSaveMessage('Profile saved successfully! Edits are locked again.');
             setPassword('');
+            refreshProfile();
         } catch (error) {
             setSaveMessage('Failed to save profile details.');
         } finally {
             setSaving(false);
         }
     };
+
+    const isEditable = !!localUser?.doctorEditPermission;
 
     return (
         <div className="container-fluid py-3 d-flex flex-column gap-4">
@@ -644,34 +680,34 @@ export const DoctorProfile = () => {
                 <div className="col-12 col-lg-4">
                     <div className="card border-0 shadow-sm rounded-4 bg-white p-4 text-center">
                         <img 
-                            src={user?.avatar || 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=300'} 
+                            src={localUser?.avatar || 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=300'} 
                             className="rounded-circle border border-4 border-primary-subtle mx-auto mb-3" 
                             style={{ width: '120px', height: '120px', objectFit: 'cover' }}
                             alt="" 
                         />
-                        <h4 className="fw-bold text-dark mb-1">{user?.name}</h4>
-                        <p className="text-primary fw-semibold small mb-4">{user?.doctorSpecialization || 'Specialist'}</p>
+                        <h4 className="fw-bold text-dark mb-1">{localUser?.name}</h4>
+                        <p className="text-primary fw-semibold small mb-4">{localUser?.doctorSpecialization || 'Specialist'}</p>
                         
                         <div className="d-flex flex-column gap-2 text-start p-3 bg-light rounded-3 border border-light-subtle">
                             <div className="d-flex justify-content-between small">
                                 <span className="text-muted">Doctor ID</span>
-                                <span className="fw-bold text-dark font-monospace">#{user?.id.slice(-6)}</span>
+                                <span className="fw-bold text-dark font-monospace">#{localUser?.id ? localUser.id.slice(-6) : ''}</span>
                             </div>
                             <div className="d-flex justify-content-between small">
                                 <span className="text-muted">Gender</span>
-                                <span className="fw-bold text-dark">{user?.gender || 'Not specified'}</span>
+                                <span className="fw-bold text-dark">{localUser?.gender || 'Not specified'}</span>
                             </div>
                             <div className="d-flex justify-content-between small">
                                 <span className="text-muted">Contact Phone</span>
-                                <span className="fw-bold text-dark">{user?.phone}</span>
+                                <span className="fw-bold text-dark">{localUser?.phone}</span>
                             </div>
                             <div className="d-flex justify-content-between small">
                                 <span className="text-muted">Rating</span>
-                                <span className="fw-bold text-success">{user?.doctorRating || 4.9} ★</span>
+                                <span className="fw-bold text-success">{localUser?.doctorRating || 4.9} ★</span>
                             </div>
                             <div className="d-flex justify-content-between small">
                                 <span className="text-muted">Patients treated</span>
-                                <span className="fw-bold text-dark">{user?.doctorPatients || '1,200+'}</span>
+                                <span className="fw-bold text-dark">{localUser?.doctorPatients || '0'}</span>
                             </div>
                         </div>
                     </div>
@@ -680,10 +716,47 @@ export const DoctorProfile = () => {
                 {/* Edit Form */}
                 <div className="col-12 col-lg-8">
                     <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
-                        <h5 className="fw-bold text-dark mb-4 d-flex align-items-center gap-2">
-                            <FileText size={18} className="text-primary" />
-                            Profile Details
-                        </h5>
+                        <div className="d-flex justify-content-between align-items-center mb-4">
+                            <h5 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                <FileText size={18} className="text-primary" />
+                                Profile Details
+                            </h5>
+                            {isEditable ? (
+                                <span className="badge rounded-pill bg-success-subtle text-success border border-success border-opacity-20 px-3 py-1.5 fw-bold">✔ Unlocked</span>
+                            ) : (
+                                <span className="badge rounded-pill bg-danger-subtle text-danger border border-danger border-opacity-20 px-3 py-1.5 fw-bold">🔒 Locked</span>
+                            )}
+                        </div>
+
+                        {!isEditable && (
+                            <div className="mb-4">
+                                {localUser?.doctorEditRequest ? (
+                                    <div className="alert alert-warning border-warning border-opacity-20 bg-warning-subtle bg-opacity-25 text-warning-emphasis d-flex align-items-center gap-2 rounded-3 small py-3 px-4" role="alert">
+                                        <Clock size={18} className="text-warning flex-shrink-0" />
+                                        <div>
+                                            <strong>Edit Request Pending:</strong> Your request to modify profile details has been sent to the Admin. Please wait for approval.
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="alert alert-info border-info border-opacity-20 bg-info-subtle bg-opacity-25 text-info-emphasis d-flex flex-column gap-3 rounded-3 small py-3 px-4" role="alert">
+                                        <div className="d-flex align-items-center gap-2">
+                                            <AlertTriangle size={18} className="text-info flex-shrink-0" />
+                                            <div>
+                                                <strong>Profile Locked:</strong> You cannot make changes to your profile without the permission of the admin.
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <button 
+                                                onClick={handleRequestEdit} 
+                                                className="btn btn-info text-white fw-bold btn-sm rounded-pill px-4 py-2 border-0 shadow-sm"
+                                            >
+                                                Request Edit Permission
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         
                         <form onSubmit={handleSave} className="d-flex flex-column gap-4">
                             <div>
@@ -697,21 +770,27 @@ export const DoctorProfile = () => {
                                             value={name} 
                                             onChange={e => setName(e.target.value)} 
                                             required
+                                            disabled={!isEditable}
                                         />
                                     </div>
                                     <div className="col-12 col-md-6">
-                                        <label className="form-label small fw-bold text-muted mb-1">Email Address</label>
+                                        <label className="form-label small fw-bold text-muted mb-1">Email Address (Permanently Read-Only)</label>
                                         <input 
                                             type="email" 
-                                            className="form-control form-control-premium" 
+                                            className="form-control form-control-premium bg-light" 
                                             value={email} 
-                                            onChange={e => setEmail(e.target.value)} 
                                             required
+                                            disabled
                                         />
                                     </div>
                                     <div className="col-12 col-md-6">
                                         <label className="form-label small fw-bold text-muted mb-1">Gender</label>
-                                        <select className="form-select form-control-premium" value={gender} onChange={e => setGender(e.target.value)}>
+                                        <select 
+                                            className="form-select form-control-premium" 
+                                            value={gender} 
+                                            onChange={e => setGender(e.target.value)}
+                                            disabled={!isEditable}
+                                        >
                                             <option value="Male">Male</option>
                                             <option value="Female">Female</option>
                                             <option value="Other">Other</option>
@@ -725,6 +804,7 @@ export const DoctorProfile = () => {
                                             placeholder="Enter new password" 
                                             value={password} 
                                             onChange={e => setPassword(e.target.value)} 
+                                            disabled={!isEditable}
                                         />
                                     </div>
                                 </div>
@@ -743,6 +823,7 @@ export const DoctorProfile = () => {
                                             value={specialization} 
                                             onChange={e => setSpecialization(e.target.value)} 
                                             required
+                                            disabled={!isEditable}
                                         />
                                     </div>
                                     <div className="col-12 col-md-6">
@@ -753,6 +834,7 @@ export const DoctorProfile = () => {
                                             value={qualification} 
                                             onChange={e => setQualification(e.target.value)} 
                                             required
+                                            disabled={!isEditable}
                                         />
                                     </div>
                                     <div className="col-12 col-md-6">
@@ -764,6 +846,7 @@ export const DoctorProfile = () => {
                                             onChange={e => setExperience(Number(e.target.value))} 
                                             min={0}
                                             required
+                                            disabled={!isEditable}
                                         />
                                     </div>
                                     <div className="col-12 col-md-6">
@@ -776,6 +859,7 @@ export const DoctorProfile = () => {
                                             min={5}
                                             max={60}
                                             required
+                                            disabled={!isEditable}
                                         />
                                     </div>
                                 </div>
@@ -787,11 +871,13 @@ export const DoctorProfile = () => {
                                 </div>
                             )}
 
-                            <div className="d-flex justify-content-end gap-2 mt-2">
-                                <Button type="submit" disabled={saving} className="btn-premium-primary px-4 py-2.5 d-flex align-items-center gap-1.5">
-                                    {saving ? 'Saving...' : 'Save Profile Changes'}
-                                </Button>
-                            </div>
+                            {isEditable && (
+                                <div className="d-flex justify-content-end gap-2 mt-2">
+                                    <Button type="submit" disabled={saving} className="btn-premium-primary px-4 py-2.5 d-flex align-items-center gap-1.5">
+                                        {saving ? 'Saving...' : 'Save Profile Changes'}
+                                    </Button>
+                                </div>
+                            )}
                         </form>
                     </div>
                 </div>

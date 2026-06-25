@@ -17,6 +17,16 @@ export interface User {
   email: string;
   role: Role;
   avatar?: string;
+  phone?: string;
+  gender?: string;
+  doctorEditPermission?: boolean;
+  doctorEditRequest?: boolean;
+  doctorSpecialization?: string;
+  doctorQualification?: string;
+  doctorExperience?: number;
+  doctorRating?: number;
+  doctorPatients?: number;
+  doctorAvgConsultationTime?: number;
   patientDetails?: {
     dob: string;
     bloodGroup: string;

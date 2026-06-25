@@ -74,8 +74,27 @@ router.post('/users', async (req, res) => {
 
 router.put('/users/:id', async (req, res) => {
     try {
+        const existingUser = await prisma.user.findUnique({ where: { id: req.params.id } });
         const { address, patientDetails, doctorDetails, ...rest } = req.body;
         const data: any = { ...rest };
+
+        if (existingUser?.role === 'DOCTOR') {
+            if (!existingUser.doctorEditPermission) {
+                return res.status(403).json({ message: 'Profile editing is locked. Please request permission from the Admin.' });
+            }
+            // Enforce read-only fields for doctor: ID, patients treated, ratings, email/gmail
+            delete data.email;
+            delete data.doctorPatients;
+            delete data.doctorRating;
+            if (doctorDetails) {
+                delete doctorDetails.patients;
+                delete doctorDetails.rating;
+            }
+
+            // Auto-relock the profile on save
+            data.doctorEditPermission = false;
+            data.doctorEditRequest = false;
+        }
         
         if (rest.password) {
             data.password = await bcrypt.hash(rest.password, 10);
@@ -119,6 +138,37 @@ router.put('/users/:id', async (req, res) => {
             data
         });
         res.json(user);
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.put('/users/:id/request-edit', async (req, res) => {
+    try {
+        const user = await prisma.user.update({
+            where: { id: req.params.id },
+            data: {
+                doctorEditRequest: true,
+                doctorEditPermission: false
+            }
+        });
+        res.json({ success: true, user });
+    } catch (err: any) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.put('/users/:id/grant-edit', async (req, res) => {
+    try {
+        const { allowed } = req.body;
+        const user = await prisma.user.update({
+            where: { id: req.params.id },
+            data: {
+                doctorEditPermission: allowed,
+                doctorEditRequest: false
+            }
+        });
+        res.json({ success: true, user });
     } catch (err: any) {
         res.status(500).json({ message: err.message });
     }

@@ -16,6 +16,8 @@ model User {
   role      String   @default("PATIENT")
   avatar    String?
   gender    String?  // General gender (Male/Female/Other)
+  doctorEditPermission Boolean @default(false)
+  doctorEditRequest    Boolean @default(false)
   
   // Flattened Address fields
   addressStreet  String?
